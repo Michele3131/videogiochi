@@ -1,8 +1,14 @@
 # 8. Testing, Configurazione e Deployment
 
+> **Riferimenti teorici**: Questo capitolo implementa le strategie di testing descritte in [Testing Strategies](../knowledge/06-testing-strategies.md) e le configurazioni di deployment
+
 ## 8.1 Strategia di Testing
 
+> **Best Practice**: Una strategia di testing completa include test unitari, di integrazione e end-to-end per garantire la qualità del software.
+
 ### 8.1.1 Configurazione Test
+
+> **Concetto chiave**: Utilizziamo Testcontainers per creare un ambiente di test isolato con database reale, garantendo test più affidabili.
 
 **TestConfig.java**:
 ```java

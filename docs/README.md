@@ -1,28 +1,35 @@
 # Libreria Videogiochi - Documentazione Progetto
 
+> **Riferimenti teorici**: Per approfondire i pattern architetturali utilizzati, consulta [Pattern Architetturali](../knowledge/01-pattern-architetturali.md) e [DTO Mapping Patterns](../knowledge/03-dto-mapping-patterns.md)
+
 ## Panoramica del Progetto
 
 Questo progetto implementa una libreria di videogiochi simile a IMDb, progettata per praticare concetti avanzati di sviluppo software come:
 
-- **Pattern MVC** (Model-View-Controller)
+- **Pattern MVC** (Model-View-Controller) - *Vedi [Pattern Architetturali](../knowledge/01-pattern-architetturali.md)*
 - **IoC** (Inversion of Control) e Dependency Injection
-- **DTO** (Data Transfer Objects)
+- **DTO** (Data Transfer Objects) - *Vedi [DTO Mapping Patterns](../knowledge/03-dto-mapping-patterns.md)*
 - **Query dinamiche** e ottimizzazione database
 - **Paginazione** e performance
 - **Best practices** di sviluppo
 
 ## Struttura della Documentazione
 
+### Documentazione Implementativa (docs/)
 1. [Analisi dei Requisiti](./01-analisi-requisiti.md)
 2. [Architettura del Sistema](./02-architettura-sistema.md)
 3. [Design del Database](./03-design-database.md)
-4. [Implementazione Backend](./04-implementazione-backend.md)
-5. [Implementazione Frontend](./05-implementazione-frontend.md)
-6. [Sicurezza e Autenticazione](./06-sicurezza-autenticazione.md)
-7. [Testing e Quality Assurance](./07-testing-qa.md)
-8. [Deployment e DevOps](./08-deployment-devops.md)
-9. [Ottimizzazioni e Performance](./09-ottimizzazioni-performance.md)
-10. [Manutenzione e Evoluzione](./10-manutenzione-evoluzione.md)
+4. [Implementazione Backend](./04-implementazione-backend.md) - **Codice completo backend**
+5. [Service Layer e Mappers](./05-service-layer-mappers.md) - **Logica di business**
+6. [Controller e Sicurezza](./06-controller-security.md) - **API REST e autenticazione**
+7. [Exception e Validation](./07-exception-validation.md) - **Gestione errori**
+8. [Testing, Config e Deployment](./08-testing-config-deployment.md) - **Test e configurazione**
+9. [Frontend Implementation](./09-frontend-implementation.md) - **Interfaccia utente**
+10. [Frontend Components e Pages](./10-frontend-components-pages.md) - **Componenti UI**
+
+### Documentazione Teorica (knowledge/)
+- [Pattern Architetturali](../knowledge/01-pattern-architetturali.md) - MVC, Layered Architecture, Repository Pattern
+- [DTO Mapping Patterns](../knowledge/03-dto-mapping-patterns.md) - Strategie di mapping e best practices
 
 ## Obiettivi di Apprendimento
 
@@ -96,8 +103,82 @@ Ogni fase includerà:
 - Documentazione
 - Review e refactoring
 
-## Prossimi Passi
+## 🚀 Guida Rapida per Iniziare
 
-Per iniziare lo sviluppo, consultare la documentazione nell'ordine indicato, partendo dall'[Analisi dei Requisiti](./01-analisi-requisiti.md).
+### Prerequisiti
+- **Java 21** o superiore
+- **Maven 3.8+**
+- **MySQL 8.0+**
+- **IDE** (IntelliJ IDEA, Eclipse, VS Code)
 
-Per approfondire i concetti teorici, consultare la cartella `knowledge/` che contiene le dispense dettagliate su tutti gli argomenti trattati.
+### Installazione e Setup
+
+1. **Clona il repository**
+   ```bash
+   git clone <repository-url>
+   cd videogiochi
+   ```
+
+2. **Configura il database MySQL**
+   ```sql
+   CREATE DATABASE videogiochi;
+   CREATE USER 'videogiochi_app'@'localhost' IDENTIFIED BY 'secure_password';
+   GRANT ALL PRIVILEGES ON videogiochi.* TO 'videogiochi_app'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+
+3. **Configura le variabili d'ambiente** (opzionale)
+   ```bash
+   export DB_USERNAME=videogiochi_app
+   export DB_PASSWORD=secure_password
+   export JWT_SECRET=mySecretKey
+   ```
+
+4. **Compila e avvia l'applicazione**
+   ```bash
+   # Compila il progetto
+   mvn clean compile
+   
+   # Avvia l'applicazione
+   mvn spring-boot:run
+   ```
+
+5. **Accedi all'applicazione**
+   - **Frontend**: http://localhost:8080
+   - **API Documentation**: http://localhost:8080/api/swagger-ui.html
+   - **API Base URL**: http://localhost:8080/api/v1
+
+### Struttura del Progetto
+```
+src/
+├── main/
+│   ├── java/mc/videogiochi/
+│   │   ├── domain/entity/          # Entità JPA
+│   │   ├── repository/             # Repository per accesso dati
+│   │   ├── service/                # Logica di business
+│   │   ├── controller/             # Controller REST
+│   │   ├── dto/                    # Data Transfer Objects
+│   │   ├── mapper/                 # MapStruct mappers
+│   │   ├── config/                 # Configurazioni
+│   │   └── exception/              # Gestione eccezioni
+│   └── resources/
+│       ├── application.yml         # Configurazione applicazione
+│       ├── db/migration/           # Script Flyway
+│       └── templates/              # Template Thymeleaf
+└── test/                           # Test unitari e integrazione
+```
+
+### Credenziali di Default
+- **Username**: admin
+- **Password**: admin123
+
+### Prossimi Passi
+
+1. **Per sviluppatori principianti**: Inizia con [Implementazione Backend](./04-implementazione-backend.md) per vedere il codice completo
+2. **Per approfondimenti teorici**: Consulta [Pattern Architetturali](../knowledge/01-pattern-architetturali.md)
+3. **Per comprendere i DTO**: Leggi [DTO Mapping Patterns](../knowledge/03-dto-mapping-patterns.md)
+
+### Supporto e Documentazione
+- Tutti i file di codice contengono commenti dettagliati per ogni riga importante
+- La documentazione teorica nella cartella `knowledge/` spiega i concetti utilizzati
+- Le API sono documentate con Swagger/OpenAPI

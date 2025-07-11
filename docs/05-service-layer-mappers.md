@@ -1,6 +1,10 @@
 # 5. Service Layer e Mappers
 
+> **Riferimenti teorici**: Questo capitolo implementa le strategie di mapping descritte in [DTO Mapping Patterns](../knowledge/03-dto-mapping-patterns.md) e il Service Layer del [Pattern Architetturale](../knowledge/01-pattern-architetturali.md)
+
 ## 5.1 Mappers con MapStruct
+
+> **Concetto chiave**: MapStruct genera automaticamente il codice di mapping tra Entity e DTO, eliminando il boilerplate code e riducendo gli errori.
 
 ### 5.1.1 Configurazione Base MapStruct
 
@@ -24,6 +28,8 @@ public interface MapperConfig {
 ```
 
 ### 5.1.2 Mapper Principali
+
+> **Pattern implementato**: Questi mapper implementano la **strategia di mapping automatico** descritta in [DTO Mapping Patterns](../knowledge/03-dto-mapping-patterns.md)
 
 **GameMapper.java**:
 ```java
@@ -223,7 +229,11 @@ public interface UserMapper {
 
 ## 5.2 Service Layer
 
+> **Pattern implementato**: Il Service Layer implementa la **logica di business** del pattern MVC. Vedi [Pattern Architetturali](../knowledge/01-pattern-architetturali.md) per i dettagli teorici.
+
 ### 5.2.1 Service Base
+
+> **Best Practice**: Il BaseService implementa operazioni CRUD comuni, seguendo il principio DRY (Don't Repeat Yourself).
 
 **BaseService.java**:
 ```java
@@ -296,6 +306,8 @@ public abstract class BaseService<T, ID, R extends JpaRepository<T, ID>> {
 ```
 
 ### 5.2.2 Game Service
+
+> **Responsabilità**: Il GameService gestisce tutta la logica di business relativa ai videogiochi: validazione, caching, statistiche e raccomandazioni.
 
 **GameService.java**:
 ```java

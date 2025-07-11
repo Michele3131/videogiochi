@@ -1,8 +1,14 @@
 # 10. Componenti e Pagine Frontend
 
+> **Riferimenti teorici**: Questo capitolo implementa i pattern di UI/UX e component design descritti in [Frontend Architecture](../knowledge/07-frontend-architecture.md)
+
 ## 10.1 Tema e Styling
 
+> **Design System**: Utilizziamo Material-UI per creare un design system coerente e accessibile, con supporto per tema chiaro/scuro.
+
 ### 10.1.1 theme/index.ts
+
+> **Personalizzazione tema**: Definiamo palette colori, tipografia e stili dei componenti per mantenere consistenza visiva in tutta l'applicazione.
 
 ```typescript
 import { createTheme, ThemeOptions } from '@mui/material/styles';
@@ -139,7 +145,11 @@ export const createAppTheme = (mode: PaletteMode) => createTheme(getDesignTokens
 
 ## 10.2 Componenti Common
 
+> **Componenti riutilizzabili**: Creiamo componenti base che possono essere riutilizzati in tutta l'applicazione, seguendo il principio DRY.
+
 ### 10.2.1 components/common/LoadingSpinner.tsx
+
+> **UX Pattern**: Il LoadingSpinner fornisce feedback visivo durante operazioni asincrone, migliorando l'esperienza utente.
 
 ```typescript
 import React from 'react';

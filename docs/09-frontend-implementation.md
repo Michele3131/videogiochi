@@ -1,8 +1,14 @@
 # 9. Implementazione Frontend
 
+> **Riferimenti teorici**: Questo capitolo implementa l'architettura frontend descritta in [Frontend Architecture](../knowledge/07-frontend-architecture.md) e i pattern di gestione stato
+
 ## 9.1 Architettura Frontend
 
+> **Pattern implementato**: Utilizziamo un'architettura component-based con React, seguendo i principi di separazione delle responsabilità e riutilizzabilità.
+
 ### 9.1.1 Tecnologie Scelte
+
+> **Stack moderno**: Abbiamo scelto tecnologie mature e ben supportate per garantire performance, manutenibilità e developer experience ottimali.
 
 - **Framework**: React 18 con TypeScript
 - **Routing**: React Router v6
@@ -15,6 +21,8 @@
 - **Styling**: Emotion (CSS-in-JS) + MUI Theme
 
 ### 9.1.2 Struttura del Progetto
+
+> **Organizzazione modulare**: La struttura segue il principio di "feature-based organization" per facilitare la manutenzione e la scalabilità.
 
 ```
 frontend/
@@ -52,6 +60,8 @@ frontend/
 ```
 
 ## 9.2 Setup Iniziale
+
+> **Configurazione ottimizzata**: Utilizziamo Vite per build veloce e hot reload, TypeScript per type safety, e configurazioni ottimizzate per sviluppo e produzione.
 
 ### 9.2.1 package.json
 

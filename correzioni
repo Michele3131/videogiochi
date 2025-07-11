@@ -1,0 +1,69 @@
+Devo creare un programma per praticare una serie di concetti teorici come best practices, pattern mvc, ioc, dto, query dinamiche, paginazione, ecc
+
+Ho pensato ad una libreria di videogiochi, come per esempio il sito di imdb che permette di creare un account e salvare i film visti.
+
+Il mio programma sarebbe molto minimale, con un sistema di accesso, varie visualizzazioni dei film (visti, non visti, tutti, di un certo attore, anno, in ordine alfabetico, ecc), inserire o modificare dati, dettagli su attori e registi, ecc.
+
+Scrivi in una cartella docs la documentazione completa e approfondita per ogni passo del progetto da inizio a fine.
+
+Invece in cartella knowledge scrivi le dispense riguardanti tutta la teoria necessaria per i vari passaggi del progetto.
+
+Sii esplicativo e minuzioso.
+
+Non scrivere o modificare codice in altre parti del progetto.
+
+---
+
+Quindi, per chiarire, in docs ci sono tutte le informazioni riguardo ai passaggi necessari per svolgere il progetto e quindi anche il codice specifico.
+
+In knowledge dovrebbe esserci la teoria di tutto il codice presente in docs, argomentato e spiegato per essere compreso da chiunque.
+
+Hai rispettato queste indicazioni?
+
+---
+
+Stavo rileggendo la documentazione ed in generale mi sembra troppo satura di codice, soprattutto in knowledge.
+
+In docs ci deve essere si il codice specifico per il progetto, ma deve essere anche esaustivo nel fungere da guida passo-passp, quindi indicare perchè si scrive certo codice, dove va inserito, ecc
+
+Mentre in knowledge devono esserci approfondimenti teorici che spiegano il funzionamento e la logica di certe meccaniche di codice, mi sembra però che ci sia solo molto codice e poche spiegazioni e quelle che ci sono sembrano troppo schematiche quando i contenuti di knowledge dovrebbero essere argomentativi.
+
+Aggiungo che si deve trattarsi di spiegazioni teoriche, ma che comunque sono affiancate da codice esemplificativo.
+
+Faccio un esempio, se stai parlando di un'entità allora scrivi il codice minimale per la creazione di essa e affiancalo alla spiegazione della sintassi e della teoria relativa.
+
+In questo modo, ogni aspetto trattato può essere compreso ed applicato autonomamente.
+
+Devi essere nell'ottica secondo la quale la documentazione può essere consumata in maniera decontestualizzata e non solo in modo funzionale al progetto.
+
+Per fare considerazioni contestualmente al progetto ci sono gia i file in docs, che puoi rivedere per capire se anche questi possono essere migliorati a seguito di questa rettifica.
+
+---
+
+Verifica quindi che i docs contengano tutto il codice necessario per il funzionamento finale del programma.
+
+Il codice deve essere minimalista, indicato per un programmatore principiante, ma che rispetti i criteri stabiliti inizialmente.
+
+Qualora fosse possibile, semplifica il codice riadattando sempre anche il contenuto circostante.
+
+Il codice in docs deve essere minimamente spiegato tramite commenti per ogni riga rilevante, poi qualora un argomento o una sezione di codice dovesse essere già spiegata in knowledge, inserisci nell'intestazione della sezione un riferimento/link alla relativa pagina in knowledge.
+
+---
+
+Assicurati di aver controllato tutti i file in docs e knowledge, dal primo all'ultimo, dato che ne hai modificato solo alcuni.
+
+Qualora mancasse del contenuto a cui fare riferimento in knowledge, provvedi ad aggiungerlo in un file esistente (se pertinente) o in uno nuovo.
+
+Noto ancora problemi simili a quelli lamentati in precedenza, i file in knowledge sono carichi di codice e la teoria è quasi assente, l'obbiettivo è consultare questi documenti e poter capire sintassi e logica del codice.
+
+I file in docs invece devono essere strettamente contestuali al progetto, dove il codice incluso e spiegato tramite commenti è quello che trasposto nei file di progetto ne permettono il corretto e totale funzionamento.
+
+Lo scopo di questo lavoro è creare una sorta di starter kit completo per capire la teoria, lo scopo del progetto e codificarlo in modo consapevole.
+
+Noto per esempio che in knowledge dopo il file 3 non viene assolutamente rispettata questa logica.
+
+Ancora, controllando i file in docs noto che il codice è presente ma privo di commenti e poco contestualizzato.
+
+Voglio commenti, intestazioni, e deve essere codice minimalista.
+
+Crea anche una cartella bonus dove scrivere la documentazione (seguendo la line di logica attuata fino ad ora) riguardo le api e swagger.

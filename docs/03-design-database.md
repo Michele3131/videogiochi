@@ -65,128 +65,138 @@ Il design del database segue i seguenti principi:
 ### 3.2.2 Entità Principali
 
 #### User (Utenti)
+La tabella `users` memorizza le informazioni relative agli utenti registrati nel sistema. Include dettagli per l'autenticazione, il profilo personale e lo stato dell'account.
+
 ```sql
 CREATE TABLE users (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    birth_date DATE,
-    avatar_url VARCHAR(500),
-    bio TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    email_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    last_login TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, -- Chiave primaria auto-incrementante per identificare univocamente l'utente
+    username VARCHAR(50) NOT NULL UNIQUE, -- Nome utente, deve essere unico e non nullo
+    email VARCHAR(100) NOT NULL UNIQUE, -- Indirizzo email, deve essere unico e non nullo
+    password_hash VARCHAR(255) NOT NULL, -- Hash della password per sicurezza (mai salvare password in chiaro)
+    first_name VARCHAR(50), -- Nome dell'utente
+    last_name VARCHAR(50), -- Cognome dell'utente
+    birth_date DATE, -- Data di nascita dell'utente
+    avatar_url VARCHAR(500), -- URL dell'immagine del profilo (avatar)
+    bio TEXT, -- Breve biografia o descrizione dell'utente
+    is_active BOOLEAN DEFAULT TRUE, -- Indica se l'account è attivo (TRUE) o disabilitato (FALSE)
+    email_verified BOOLEAN DEFAULT FALSE, -- Indica se l'indirizzo email è stato verificato
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp di creazione del record
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Timestamp dell'ultimo aggiornamento del record
+    last_login TIMESTAMP, -- Timestamp dell'ultimo accesso dell'utente
     
-    INDEX idx_username (username),
-    INDEX idx_email (email),
-    INDEX idx_active (is_active),
-    INDEX idx_created_at (created_at)
+    INDEX idx_username (username), -- Indice per ricerche veloci per username
+    INDEX idx_email (email), -- Indice per ricerche veloci per email
+    INDEX idx_active (is_active), -- Indice per filtrare utenti attivi/inattivi
+    INDEX idx_created_at (created_at) -- Indice per ordinamento o filtro per data di creazione
 );
 ```
 
 #### Game (Videogiochi)
+La tabella `games` contiene tutte le informazioni relative ai videogiochi presenti nel catalogo, inclusi metadati, valutazioni e relazioni con sviluppatori ed editori.
+
 ```sql
 CREATE TABLE games (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(200) NOT NULL,
-    description TEXT,
-    release_date DATE,
-    developer_id BIGINT,
-    publisher_id BIGINT,
-    cover_image_url VARCHAR(500),
-    trailer_url VARCHAR(500),
-    average_rating DECIMAL(3,2) DEFAULT 0.00,
-    total_ratings INT DEFAULT 0,
-    metacritic_score INT,
-    esrb_rating ENUM('E', 'E10+', 'T', 'M', 'AO', 'RP'),
-    price DECIMAL(8,2),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, -- Chiave primaria auto-incrementante per identificare univocamente il gioco
+    title VARCHAR(200) NOT NULL, -- Titolo del videogioco (obbligatorio)
+    description TEXT, -- Descrizione dettagliata del gioco
+    release_date DATE, -- Data di pubblicazione ufficiale
+    developer_id BIGINT, -- Riferimento allo sviluppatore (FK)
+    publisher_id BIGINT, -- Riferimento all'editore (FK)
+    cover_image_url VARCHAR(500), -- URL dell'immagine di copertina
+    trailer_url VARCHAR(500), -- URL del trailer ufficiale
+    average_rating DECIMAL(3,2) DEFAULT 0.00, -- Valutazione media (0-5)
+    total_ratings INT DEFAULT 0, -- Numero totale di valutazioni ricevute
+    metacritic_score INT, -- Punteggio Metacritic (se disponibile)
+    esrb_rating ENUM('E', 'E10+', 'T', 'M', 'AO', 'RP'), -- Classificazione ESRB (età consigliata)
+    price DECIMAL(8,2), -- Prezzo corrente
+    is_active BOOLEAN DEFAULT TRUE, -- Indica se il gioco è attivo nel catalogo
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp di creazione record
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Timestamp ultimo aggiornamento
     
-    FOREIGN KEY (developer_id) REFERENCES developers(id),
-    FOREIGN KEY (publisher_id) REFERENCES publishers(id),
+    FOREIGN KEY (developer_id) REFERENCES developers(id), -- Vincolo FK per sviluppatore
+    FOREIGN KEY (publisher_id) REFERENCES publishers(id), -- Vincolo FK per editore
     
-    INDEX idx_title (title),
-    INDEX idx_release_date (release_date),
-    INDEX idx_developer (developer_id),
-    INDEX idx_publisher (publisher_id),
-    INDEX idx_rating (average_rating),
-    INDEX idx_active (is_active),
-    FULLTEXT idx_search (title, description)
+    INDEX idx_title (title), -- Indice per ricerca per titolo
+    INDEX idx_release_date (release_date), -- Indice per ordinamento/filtro per data
+    INDEX idx_developer (developer_id), -- Indice per join con sviluppatori
+    INDEX idx_publisher (publisher_id), -- Indice per join con editori
+    INDEX idx_rating (average_rating), -- Indice per ordinamento per valutazione
+    INDEX idx_active (is_active), -- Indice per filtrare giochi attivi/inattivi
+    FULLTEXT idx_search (title, description) -- Indice full-text per ricerca avanzata
 );
 ```
 
 #### Developer (Sviluppatori)
+La tabella `developers` memorizza le informazioni sulle case di sviluppo di videogiochi. Questi dati sono utilizzati per categorizzare i giochi e fornire informazioni aggiuntive agli utenti.
+
 ```sql
 CREATE TABLE developers (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    founded_year YEAR,
-    headquarters VARCHAR(100),
-    website VARCHAR(200),
-    logo_url VARCHAR(500),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, -- Chiave primaria auto-incrementante per identificare univocamente lo sviluppatore
+    name VARCHAR(100) NOT NULL UNIQUE, -- Nome dello sviluppatore (obbligatorio e unico)
+    description TEXT, -- Breve descrizione dello sviluppatore
+    founded_year YEAR, -- Anno di fondazione
+    headquarters VARCHAR(100), -- Sede principale
+    website VARCHAR(200), -- Sito web ufficiale
+    logo_url VARCHAR(500), -- URL del logo dello sviluppatore
+    is_active BOOLEAN DEFAULT TRUE, -- Indica se lo sviluppatore è attivo nel sistema
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp di creazione record
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Timestamp ultimo aggiornamento
     
-    INDEX idx_name (name),
-    INDEX idx_founded_year (founded_year),
-    INDEX idx_active (is_active)
+    INDEX idx_name (name), -- Indice per ricerca per nome
+    INDEX idx_founded_year (founded_year), -- Indice per ordinamento/filtro per anno di fondazione
+    INDEX idx_active (is_active) -- Indice per filtrare sviluppatori attivi/inattivi
 );
 ```
 
 #### Publisher (Editori)
+La tabella `publishers` è simile alla tabella `developers` e memorizza le informazioni sugli editori di videogiochi. Anche questi dati sono fondamentali per la categorizzazione e la ricerca dei giochi.
+
 ```sql
 CREATE TABLE publishers (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    founded_year YEAR,
-    headquarters VARCHAR(100),
-    website VARCHAR(200),
-    logo_url VARCHAR(500),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, -- Chiave primaria auto-incrementante per identificare univocamente l'editore
+    name VARCHAR(100) NOT NULL UNIQUE, -- Nome dell'editore (obbligatorio e unico)
+    description TEXT, -- Breve descrizione dell'editore
+    founded_year YEAR, -- Anno di fondazione
+    headquarters VARCHAR(100), -- Sede principale
+    website VARCHAR(200), -- Sito web ufficiale
+    logo_url VARCHAR(500), -- URL del logo dell'editore
+    is_active BOOLEAN DEFAULT TRUE, -- Indica se l'editore è attivo nel sistema
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp di creazione record
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Timestamp ultimo aggiornamento
     
-    INDEX idx_name (name),
-    INDEX idx_founded_year (founded_year),
-    INDEX idx_active (is_active)
+    INDEX idx_name (name), -- Indice per ricerca per nome
+    INDEX idx_founded_year (founded_year), -- Indice per ordinamento/filtro per anno di fondazione
+    INDEX idx_active (is_active) -- Indice per filtrare editori attivi/inattivi
 );
 ```
 
 #### UserGameList (Liste Utente)
+La tabella `user_game_lists` gestisce le liste personalizzate di giochi create dagli utenti, come "Giocati", "Wishlist", "In Gioco", ecc. Permette agli utenti di tenere traccia dei propri progressi e preferenze.
+
 ```sql
 CREATE TABLE user_game_lists (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    game_id BIGINT NOT NULL,
-    list_type ENUM('PLAYED', 'WISHLIST', 'PLAYING', 'DROPPED', 'CUSTOM') NOT NULL,
-    rating TINYINT CHECK (rating >= 1 AND rating <= 10),
-    review TEXT,
-    completion_date DATE,
-    play_time_hours INT,
-    priority ENUM('LOW', 'MEDIUM', 'HIGH') DEFAULT 'MEDIUM',
-    notes TEXT,
-    is_favorite BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, -- Chiave primaria auto-incrementante
+    user_id BIGINT NOT NULL, -- ID dell'utente che ha creato la lista (FK)
+    game_id BIGINT NOT NULL, -- ID del gioco associato alla lista (FK)
+    list_type ENUM('PLAYED', 'WISHLIST', 'PLAYING', 'DROPPED', 'CUSTOM') NOT NULL, -- Tipo di lista (es. giocati, wishlist)
+    rating TINYINT CHECK (rating >= 1 AND rating <= 10), -- Valutazione del gioco da parte dell'utente (da 1 a 10)
+    review TEXT, -- Recensione testuale del gioco da parte dell'utente
+    completion_date DATE, -- Data di completamento del gioco (se applicabile)
+    play_time_hours INT, -- Tempo di gioco in ore
+    priority ENUM('LOW', 'MEDIUM', 'HIGH') DEFAULT 'MEDIUM', -- Priorità del gioco nella lista (es. per wishlist)
+    notes TEXT, -- Note personali dell'utente sul gioco
+    is_favorite BOOLEAN DEFAULT FALSE, -- Indica se il gioco è marcato come preferito dall'utente
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp di creazione del record
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Timestamp dell'ultimo aggiornamento
     
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, -- Vincolo FK con la tabella users (cancellazione a cascata)
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE, -- Vincolo FK con la tabella games (cancellazione a cascata)
     
-    UNIQUE KEY uk_user_game_list (user_id, game_id, list_type),
-    INDEX idx_user_list_type (user_id, list_type),
-    INDEX idx_game_rating (game_id, rating),
-    INDEX idx_completion_date (completion_date),
-    INDEX idx_favorite (is_favorite)
+    UNIQUE KEY uk_user_game_list (user_id, game_id, list_type), -- Assicura che un utente non possa avere lo stesso gioco più volte nella stessa lista
+    INDEX idx_user_list_type (user_id, list_type), -- Indice per ricerche veloci per utente e tipo di lista
+    INDEX idx_game_rating (game_id, rating), -- Indice per analisi delle valutazioni per gioco
+    INDEX idx_completion_date (completion_date), -- Indice per ordinamento/filtro per data di completamento
+    INDEX idx_favorite (is_favorite) -- Indice per filtrare i giochi preferiti
 );
 ```
 
@@ -261,22 +271,22 @@ CREATE TABLE game_platforms (
 ### 3.2.4 Entità per Funzionalità Avanzate
 
 #### CustomList (Liste Personalizzate)
+La tabella `custom_lists` permette agli utenti di creare liste di giochi completamente personalizzate, oltre ai tipi predefiniti in `user_game_lists`. Questo offre maggiore flessibilità per organizzare i giochi.
+
 ```sql
 CREATE TABLE custom_lists (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    is_public BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, -- Chiave primaria auto-incrementante
+    user_id BIGINT NOT NULL, -- ID dell'utente proprietario della lista (FK)
+    name VARCHAR(100) NOT NULL, -- Nome della lista personalizzata
+    description TEXT, -- Descrizione della lista
+    is_public BOOLEAN DEFAULT FALSE, -- Indica se la lista è pubblica o privata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp di creazione del record
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Timestamp dell'ultimo aggiornamento
     
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    
-    INDEX idx_user_name (user_id, name),
-    INDEX idx_public (is_public),
-    INDEX idx_active (is_active)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, -- Vincolo FK con la tabella users (cancellazione a cascata)
+    UNIQUE KEY uk_user_custom_list_name (user_id, name), -- Assicura che un utente non possa avere due liste personalizzate con lo stesso nome
+    INDEX idx_user_id (user_id), -- Indice per ricerche veloci per utente
+    INDEX idx_is_public (is_public) -- Indice per filtrare le liste pubbliche
 );
 ```
 

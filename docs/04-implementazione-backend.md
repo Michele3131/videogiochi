@@ -1,8 +1,12 @@
 # 4. Implementazione Backend
 
+> **Riferimenti teorici**: Questo capitolo implementa i pattern descritti in [Pattern Architetturali](../knowledge/01-pattern-architetturali.md) e [DTO Mapping Patterns](../knowledge/03-dto-mapping-patterns.md)
+
 ## 4.1 Setup Iniziale del Progetto
 
 ### 4.1.1 Configurazione Maven: Fondamenta del Progetto
+
+> **Concetto chiave**: Maven gestisce automaticamente le dipendenze e la compilazione del progetto, semplificando notevolmente lo sviluppo.
 
 **Perché iniziamo con Maven?**
 Maven è il nostro sistema di gestione delle dipendenze e build automation. La configurazione corretta del `pom.xml` è cruciale perché definisce:
@@ -234,6 +238,8 @@ Maven è il nostro sistema di gestione delle dipendenze e build automation. La c
 
 ### 4.1.2 Configurazione Application Properties: Il Cuore dell'Applicazione
 
+> **Suggerimento per principianti**: Il file `application.yml` è come il "pannello di controllo" della tua applicazione - qui configuri database, sicurezza, logging e molto altro.
+
 **Perché usiamo application.yml invece di application.properties?**
 YAML offre una sintassi più leggibile e strutturata, ideale per configurazioni complesse con gerarchie annidate.
 
@@ -367,12 +373,16 @@ management:
 
 ## 4.2 Layer Domain - Entità JPA: La Struttura dei Dati
 
+> **Pattern implementato**: Questo layer implementa il **Domain Model** del pattern MVC. Vedi [Pattern Architetturali](../knowledge/01-pattern-architetturali.md) per i dettagli teorici.
+
 **Perché iniziamo con le entità?**
 Le entità JPA rappresentano la struttura dei nostri dati e definiscono come l'applicazione interagisce con il database. Sono il cuore del Domain Layer.
 
 **Dove posizionare le entità:** Tutte le entità vanno nel package `src/main/java/mc/videogiochi/domain/entity/`.
 
 ### 4.2.1 Entità Base: Fondamenta Comuni
+
+> **Best Practice**: La BaseEntity implementa il principio DRY (Don't Repeat Yourself) - tutti i campi comuni sono definiti una sola volta.
 
 **Perché creare una BaseEntity?**
 Evita duplicazione di codice per campi comuni (ID, timestamp, versioning) e garantisce consistenza tra tutte le entità.
@@ -427,6 +437,8 @@ public abstract class BaseEntity {
 
 **User.java** - Posizionare in `src/main/java/mc/videogiochi/domain/entity/User.java`:
 
+> **Integrazione con Spring Security**: User implementa UserDetails per integrarsi seamlessly con il sistema di autenticazione di Spring.
+
 **Perché User implementa UserDetails?**
 Spring Security richiede questa interfaccia per l'autenticazione. Integriamo direttamente la logica di sicurezza nell'entità per semplicità.
 
@@ -437,7 +449,7 @@ package mc.videogiochi.domain.entity;
 // Import per JPA e validazione
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
-// Import Lombok per ridurre boilerplate
+// Import Lombok per ridurre boilerplate code
 import lombok.*;
 // Import Spring Security per autenticazione
 import org.springframework.security.core.GrantedAuthority;
@@ -448,81 +460,92 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
-// @Entity: Marca la classe come entità JPA
-@Entity
-// @Table: Specifica il nome della tabella nel database
-@Table(name = "users")
-// Lombok: genera getter, setter, costruttori e builder pattern
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-// Estende BaseEntity per ereditare id, timestamps e versioning
-// Implementa UserDetails per integrazione con Spring Security
+/**
+ * Entità User: rappresenta un utente del sistema
+ * - Estende BaseEntity per ereditare campi comuni (id, timestamps, version)
+ * - Implementa UserDetails per integrazione con Spring Security
+ * - Utilizza Lombok per ridurre il codice boilerplate
+ */
+@Entity // Marca la classe come entità JPA (mappa su tabella database)
+@Table(name = "users") // Specifica il nome della tabella nel database
+@Getter // Lombok: genera automaticamente tutti i metodi getter
+@Setter // Lombok: genera automaticamente tutti i metodi setter
+@NoArgsConstructor // Lombok: genera costruttore senza parametri
+@AllArgsConstructor // Lombok: genera costruttore con tutti i parametri
+@Builder // Lombok: genera pattern Builder per creazione oggetti
 public class User extends BaseEntity implements UserDetails {
     
     // Campo username: identificativo univoco dell'utente
     @Column(name = "username", unique = true, nullable = false, length = 50)
-    @NotBlank(message = "Username è obbligatorio")  // Validazione: non vuoto
-    @Size(min = 3, max = 50, message = "Username deve essere tra 3 e 50 caratteri")
+    @NotBlank(message = "Username è obbligatorio")  // Validazione: campo non può essere vuoto
+    @Size(min = 3, max = 50, message = "Username deve essere tra 3 e 50 caratteri") // Validazione lunghezza
     private String username;
     
     // Campo email: per comunicazioni e login alternativo
     @Column(name = "email", unique = true, nullable = false, length = 100)
-    @NotBlank(message = "Email è obbligatoria")
-    @Email(message = "Email non valida")  // Validazione formato email
+    @NotBlank(message = "Email è obbligatoria") // Validazione: campo obbligatorio
+    @Email(message = "Email non valida")  // Validazione: formato email corretto
     private String email;
     
-    // Password hashata (mai salvare password in chiaro!)
+    // Password hashata (IMPORTANTE: mai salvare password in chiaro per sicurezza!)
     @Column(name = "password_hash", nullable = false)
     @NotBlank(message = "Password è obbligatoria")
-    private String password;  // Sarà hashata dal service prima del salvataggio
+    private String password;  // Sarà hashata dal service prima del salvataggio nel database
     
+    // Dati personali opzionali dell'utente
     @Column(name = "first_name", length = 50)
-    private String firstName;
+    private String firstName; // Nome dell'utente
     
     @Column(name = "last_name", length = 50)
-    private String lastName;
+    private String lastName; // Cognome dell'utente
     
     @Column(name = "birth_date")
-    private LocalDate birthDate;
+    private LocalDate birthDate; // Data di nascita per calcolare età
     
     @Column(name = "avatar_url", length = 500)
-    private String avatarUrl;
+    private String avatarUrl; // URL dell'immagine profilo
     
     @Column(name = "bio", columnDefinition = "TEXT")
-    private String bio;
+    private String bio; // Biografia/descrizione utente (testo lungo)
     
+    // Campi di stato dell'account
     @Column(name = "is_active")
-    @Builder.Default
-    private Boolean isActive = true;
+    @Builder.Default // Lombok: valore di default quando si usa il Builder
+    private Boolean isActive = true; // Account attivo/disattivato
     
     @Column(name = "email_verified")
     @Builder.Default
-    private Boolean emailVerified = false;
+    private Boolean emailVerified = false; // Email verificata tramite link
     
     @Column(name = "last_login")
-    private LocalDateTime lastLogin;
+    private LocalDateTime lastLogin; // Timestamp ultimo accesso
     
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "user_roles",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id")
+    // Relazione Many-to-Many con Role: un utente può avere più ruoli
+    @ManyToMany(fetch = FetchType.EAGER) // EAGER: carica subito i ruoli (necessario per Spring Security)
+    @JoinTable( // Tabella di join per la relazione many-to-many
+        name = "user_roles", // Nome della tabella intermedia
+        joinColumns = @JoinColumn(name = "user_id"), // Colonna che referenzia User
+        inverseJoinColumns = @JoinColumn(name = "role_id") // Colonna che referenzia Role
     )
     @Builder.Default
-    private Set<Role> roles = new HashSet<>();
+    private Set<Role> roles = new HashSet<>(); // Set evita duplicati
     
+    // Relazione One-to-Many con UserGameList: un utente ha molte liste di giochi
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<UserGameList> gameLists = new ArrayList<>();
     
+    // Relazione One-to-Many con CustomList: un utente può creare liste personalizzate
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<CustomList> customLists = new ArrayList<>();
     
-    // UserDetails implementation
+    // ========== IMPLEMENTAZIONE USERDETAILS (richiesta da Spring Security) ==========
+    
+    /**
+     * Restituisce i ruoli dell'utente come GrantedAuthority
+     * Spring Security usa questo metodo per l'autorizzazione
+     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
@@ -532,40 +555,53 @@ public class User extends BaseEntity implements UserDetails {
     
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return true; // Gli account non scadono mai in questo sistema
     }
     
     @Override
     public boolean isAccountNonLocked() {
-        return isActive;
+        return isActive; // Account bloccato se non attivo
     }
     
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
+        return true; // Le password non scadono mai in questo sistema
     }
     
     @Override
     public boolean isEnabled() {
-        return isActive && emailVerified;
+        return isActive && emailVerified; // Account abilitato solo se attivo E email verificata
     }
     
-    // Helper methods
+    // ========== METODI HELPER (utility per semplificare operazioni comuni) ==========
+    
+    /**
+     * Restituisce il nome completo dell'utente
+     * Se nome e cognome non sono disponibili, usa lo username
+     */
     public String getFullName() {
         if (firstName != null && lastName != null) {
             return firstName + " " + lastName;
         }
-        return username;
+        return username; // Fallback su username se nome/cognome mancanti
     }
     
+    /**
+     * Aggiunge un ruolo all'utente
+     * Gestisce automaticamente la relazione bidirezionale
+     */
     public void addRole(Role role) {
-        roles.add(role);
-        role.getUsers().add(this);
+        roles.add(role); // Aggiunge il ruolo a questo utente
+        role.getUsers().add(this); // Aggiunge questo utente al ruolo (relazione bidirezionale)
     }
     
+    /**
+     * Rimuove un ruolo dall'utente
+     * Gestisce automaticamente la relazione bidirezionale
+     */
     public void removeRole(Role role) {
-        roles.remove(role);
-        role.getUsers().remove(this);
+        roles.remove(role); // Rimuove il ruolo da questo utente
+        role.getUsers().remove(this); // Rimuove questo utente dal ruolo (relazione bidirezionale)
     }
 }
 ```

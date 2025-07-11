@@ -1,8 +1,14 @@
 # 6. Controller REST e Sicurezza
 
+> **Riferimenti teorici**: Questo capitolo implementa il **Controller Layer** del pattern MVC e le strategie di sicurezza descritte in [Pattern Architetturali](../knowledge/01-pattern-architetturali.md) e [Sicurezza Web](../knowledge/04-sicurezza-web.md)
+
 ## 6.1 Controller Layer
 
+> **Pattern implementato**: I Controller gestiscono le richieste HTTP e coordinano tra Presentation Layer e Service Layer.
+
 ### 6.1.1 Controller Base
+
+> **Best Practice**: Il BaseController centralizza la gestione delle risposte API, garantendo consistenza in tutta l'applicazione.
 
 **BaseController.java**:
 ```java
@@ -111,6 +117,8 @@ public class ApiResponse<T> {
 ```
 
 ### 6.1.2 Game Controller
+
+> **Responsabilità**: Il GameController espone le API REST per la gestione dei videogiochi, implementando autorizzazione basata sui ruoli.
 
 **GameController.java**:
 ```java
@@ -695,7 +703,11 @@ public class AuthController extends BaseController {
 
 ## 6.2 Configurazione Sicurezza
 
+> **Pattern implementato**: Implementiamo l'autenticazione JWT e l'autorizzazione basata sui ruoli. Vedi [Sicurezza Web](../knowledge/04-sicurezza-web.md) per i dettagli teorici.
+
 ### 6.2.1 Security Configuration
+
+> **Configurazione centrale**: Questa classe configura tutta la sicurezza dell'applicazione: autenticazione, autorizzazione, CORS e gestione delle sessioni.
 
 **SecurityConfig.java**:
 ```java
@@ -825,6 +837,8 @@ public class SecurityConfig {
 ```
 
 ### 6.2.2 JWT Components
+
+> **Concetto chiave**: JWT (JSON Web Token) permette autenticazione stateless, ideale per API REST. Vedi [Sicurezza Web](../knowledge/04-sicurezza-web.md) per approfondimenti sui token JWT.
 
 **JwtTokenProvider.java**:
 ```java

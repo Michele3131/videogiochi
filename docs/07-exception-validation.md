@@ -1,8 +1,14 @@
 # 7. Gestione Eccezioni e Validazione
 
+> **Riferimenti teorici**: Questo capitolo implementa le strategie di gestione errori e validazione descritte in [Gestione Errori](../knowledge/05-gestione-errori.md)
+
 ## 7.1 Sistema di Gestione Eccezioni
 
+> **Best Practice**: Un sistema di eccezioni strutturato migliora la manutenibilità del codice e fornisce messaggi di errore chiari agli utenti.
+
 ### 7.1.1 Eccezioni Custom
+
+> **Pattern implementato**: Utilizziamo una gerarchia di eccezioni custom per categorizzare e gestire diversi tipi di errori in modo specifico.
 
 **BaseException.java**:
 ```java
