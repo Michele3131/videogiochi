@@ -1,679 +1,188 @@
 # 3. Data Transfer Objects (DTO) e Pattern di Mapping
 
-## 3.1 Data Transfer Objects (DTO)
+## 3.1 La Filosofia dei Data Transfer Objects
 
-### 3.1.1 Definizione e Scopo
+### 3.1.1 Essenza Concettuale del Pattern DTO
 
-**Data Transfer Object (DTO)** è un pattern di design che definisce oggetti semplici utilizzati per trasferire dati tra diversi livelli di un'applicazione o tra applicazioni diverse. I DTO incapsulano i dati senza contenere logica di business.
+Il **Data Transfer Object (DTO)** rappresenta una delle soluzioni più eleganti al problema della **separazione delle responsabilità** nell'architettura software. Non si tratta semplicemente di "oggetti per trasferire dati", ma di una filosofia di design che riconosce la **natura intrinsecamente diversa** tra la rappresentazione interna dei dati (entità di dominio) e la loro rappresentazione esterna (interfacce API).
 
-### 3.1.2 Problemi Risolti dai DTO
+**Il Principio di Isolamento Semantico**
+I DTO incarnano il principio che *ciò che è ottimale per la persistenza non è necessariamente ottimale per la comunicazione*. Mentre le entità di dominio sono progettate per riflettere la logica di business e le relazioni complesse, i DTO sono progettati per l'efficienza della trasmissione e la chiarezza dell'interfaccia.
 
-#### Problema: Esposizione Diretta delle Entità
+### 3.1.2 Il Problema dell'Accoppiamento Strutturale
+
+**La Trappola dell'Esposizione Diretta**
+Quando esponiamo direttamente le entità di dominio attraverso le API, creiamo un **accoppiamento strutturale** pericoloso. Questo significa che ogni modifica al modello dati interno si riflette automaticamente sull'interfaccia pubblica, violando il principio di **stabilità dell'interfaccia**.
+
+### 3.1.3 Le Dimensioni del Problema: Oltre la Semplice Trasmissione
+
+**1. Il Problema della Contaminazione Semantica**
+L'esposizione diretta delle entità contamina il dominio con preoccupazioni di presentazione. Un'entità `Game` progettata per la persistenza potrebbe contenere relazioni lazy, identificatori tecnici, o strutture ottimizzate per le query, che non hanno senso nel contesto di un'API REST.
+
+**2. Il Problema della Rigidità Evolutiva**
+Quando l'API è direttamente accoppiata al modello dati, ogni evoluzione del dominio richiede una valutazione dell'impatto sull'interfaccia pubblica. Questo crea una **resistenza al cambiamento** che rallenta l'evoluzione del software.
+
+**3. Il Problema della Performance Semantica**
+Le entità sono progettate per la correttezza relazionale, non per l'efficienza della trasmissione. Un DTO può **denormalizzare** i dati, pre-calcolare aggregazioni, e ottimizzare la struttura per il caso d'uso specifico.
+
+**Esempio Concettuale: L'Entità vs il DTO**
 ```java
-// PROBLEMATICO - Esposizione diretta dell'entità
-@RestController
-public class GameController {
-    
-    @GetMapping("/games/{id}")
-    public Game getGame(@PathVariable Long id) {
-        return gameService.findById(id); // Espone l'entità direttamente!
-    }
-}
-
+// Entità: Ottimizzata per la persistenza e l'integrità
 @Entity
 public class Game {
-    private Long id;
+    private Long id;  // Chiave tecnica
     private String title;
-    private String description;
-    private BigDecimal price;
-    
-    // PROBLEMI:
-    // 1. Esposizione di campi interni (id tecnico)
-    // 2. Possibili lazy loading exceptions
-    // 3. Serializzazione di dati sensibili
-    // 4. Accoppiamento tra API e modello dati
-    // 5. Difficoltà nel versionare l'API
-    
-    @OneToMany(mappedBy = "game", fetch = FetchType.LAZY)
-    private List<Review> reviews; // Potenziale N+1 query!
     
     @ManyToOne(fetch = FetchType.LAZY)
-    private Developer developer; // LazyInitializationException!
+    private Developer developer;  // Relazione lazy per performance
+    
+    // Logica di dominio
+    public boolean isEligibleForDiscount() { /* ... */ }
 }
-```
 
-#### Soluzione con DTO
-```java
-// DTO per la risposta
-@Data
-@Builder
-public class GameDTO {
-    private Long id;
+// DTO: Ottimizzato per la comunicazione
+public class GameSummaryDTO {
     private String title;
-    private String description;
-    private BigDecimal price;
-    private LocalDate releaseDate;
-    private String esrbRating;
-    private Double userRating;
-    
-    // Dati del developer (denormalizzati)
-    private String developerName;
-    private String publisherName;
-    
-    // Statistiche aggregate
-    private Integer reviewCount;
-    private Double averageRating;
-    
-    // Metadati
-    private LocalDateTime lastUpdated;
-}
-
-// Controller con DTO
-@RestController
-public class GameController {
-    
-    @GetMapping("/games/{id}")
-    public ResponseEntity<GameDTO> getGame(@PathVariable Long id) {
-        GameDTO gameDTO = gameService.findGameById(id);
-        return ResponseEntity.ok(gameDTO);
-    }
+    private String developerName;  // Denormalizzato per efficienza
+    private boolean discountEligible;  // Pre-calcolato
 }
 ```
+## 3.2 Tassonomia dei DTO: Specializzazione per Contesto
+
+### 3.2.1 La Natura Polimorfica dei DTO
+
+I DTO non sono un concetto monolitico, ma si specializzano in base al **contesto d'uso** e alla **direzione del flusso dati**. Questa specializzazione riflette il principio che *diversi casi d'uso richiedono diverse rappresentazioni degli stessi dati*.
+
+**Response DTO: L'Arte della Sintesi**
+I Response DTO incarnano l'arte di **sintetizzare** informazioni complesse in forme consumabili. Non si limitano a "restituire dati", ma curano l'esperienza del consumatore dell'API, pre-elaborando, aggregando e ottimizzando le informazioni.
+
+**Request DTO: La Disciplina della Validazione**
+I Request DTO rappresentano la **prima linea di difesa** contro dati inconsistenti. Incorporano non solo la struttura dei dati attesi, ma anche le **regole di validazione** che garantiscono l'integrità semantica dell'input.
 
 ### 3.1.3 Tipi di DTO
 
 #### Response DTO (Output)
-```java
-// DTO per liste (meno dettagli)
-@Data
-@Builder
-public class GameSummaryDTO {
-    private Long id;
-    private String title;
-    private BigDecimal price;
-    private String coverImageUrl;
-    private String developerName;
-    private Double userRating;
-    private LocalDate releaseDate;
-}
 
-// DTO per dettagli completi
-@Data
-@Builder
-public class GameDetailDTO {
-    private Long id;
-    private String title;
-    private String description;
-    private String longDescription;
-    private BigDecimal price;
-    private LocalDate releaseDate;
-    private String esrbRating;
-    private List<String> screenshots;
-    private String trailerUrl;
-    
-    // Informazioni del developer
-    private DeveloperDTO developer;
-    private PublisherDTO publisher;
-    
-    // Generi e piattaforme
-    private List<GenreDTO> genres;
-    private List<PlatformDTO> platforms;
-    
-    // Statistiche
-    private Double averageRating;
-    private Integer reviewCount;
-    private Integer wishlistCount;
-    
-    // Metadati
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-}
+I Response DTO seguono il **principio della granularità semantica**: ogni DTO è progettato per un contesto d'uso specifico, ottimizzando sia le performance che l'esperienza utente.
 
-// DTO per statistiche
-@Data
-@Builder
-public class GameStatsDTO {
-    private Long totalGames;
-    private Long activeGames;
-    private Double averagePrice;
-    private Map<String, Long> gamesByGenre;
-    private Map<String, Long> gamesByRating;
-    private List<GameSummaryDTO> topRatedGames;
-    private List<GameSummaryDTO> newestGames;
-}
-```
+**DTO per Liste (Summary)**: Contengono solo le informazioni essenziali per la visualizzazione in elenchi. Seguono il principio del **minimo carico cognitivo**, presentando solo i dati necessari per permettere all'utente di identificare e confrontare rapidamente gli elementi.
+
+**DTO per Dettagli (Detail)**: Rappresentano la **vista completa** di un'entità, includendo tutte le informazioni necessarie per una visualizzazione dettagliata. Incorporano anche dati derivati e aggregati che sarebbero costosi da calcolare in tempo reale.
+
+**DTO per Statistiche (Stats)**: Specializzati nella presentazione di **dati aggregati** e **metriche derivate**. Questi DTO incapsulano logiche di business complesse, trasformando dati grezzi in informazioni significative per l'analisi e il reporting.
 
 #### Request DTO (Input)
-```java
-// DTO per creazione
-@Data
-@Builder
-public class GameCreateRequest {
-    
-    @NotBlank(message = "Il titolo è obbligatorio")
-    @Size(min = 1, max = 255, message = "Il titolo deve essere tra 1 e 255 caratteri")
-    private String title;
-    
-    @NotBlank(message = "La descrizione è obbligatoria")
-    @Size(min = 10, max = 1000, message = "La descrizione deve essere tra 10 e 1000 caratteri")
-    private String description;
-    
-    @Size(max = 5000, message = "La descrizione lunga non può superare 5000 caratteri")
-    private String longDescription;
-    
-    @NotNull(message = "Il prezzo è obbligatorio")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Il prezzo deve essere maggiore di 0")
-    @DecimalMax(value = "999.99", message = "Il prezzo non può superare 999.99")
-    private BigDecimal price;
-    
-    @NotNull(message = "La data di rilascio è obbligatoria")
-    @PastOrPresent(message = "La data di rilascio non può essere nel futuro")
-    private LocalDate releaseDate;
-    
-    @NotNull(message = "Il rating ESRB è obbligatorio")
-    private EsrbRating esrbRating;
-    
-    @NotNull(message = "Il developer è obbligatorio")
-    private Long developerId;
-    
-    @NotNull(message = "Il publisher è obbligatorio")
-    private Long publisherId;
-    
-    @NotEmpty(message = "Almeno un genere è obbligatorio")
-    @Size(max = 5, message = "Massimo 5 generi consentiti")
-    private List<Long> genreIds;
-    
-    @NotEmpty(message = "Almeno una piattaforma è obbligatoria")
-    private List<Long> platformIds;
-    
-    @URL(message = "URL del trailer non valido")
-    private String trailerUrl;
-    
-    private List<@URL(message = "URL screenshot non valido") String> screenshots;
-}
 
-// DTO per aggiornamento
-@Data
-@Builder
-public class GameUpdateRequest {
-    
-    @Size(min = 1, max = 255, message = "Il titolo deve essere tra 1 e 255 caratteri")
-    private String title;
-    
-    @Size(min = 10, max = 1000, message = "La descrizione deve essere tra 10 e 1000 caratteri")
-    private String description;
-    
-    @Size(max = 5000, message = "La descrizione lunga non può superare 5000 caratteri")
-    private String longDescription;
-    
-    @DecimalMin(value = "0.0", inclusive = false, message = "Il prezzo deve essere maggiore di 0")
-    @DecimalMax(value = "999.99", message = "Il prezzo non può superare 999.99")
-    private BigDecimal price;
-    
-    @PastOrPresent(message = "La data di rilascio non può essere nel futuro")
-    private LocalDate releaseDate;
-    
-    private EsrbRating esrbRating;
-    
-    @Size(max = 5, message = "Massimo 5 generi consentiti")
-    private List<Long> genreIds;
-    
-    private List<Long> platformIds;
-    
-    @URL(message = "URL del trailer non valido")
-    private String trailerUrl;
-    
-    private List<@URL(message = "URL screenshot non valido") String> screenshots;
-}
+I Request DTO implementano il **principio della validazione anticipata** e della **sicurezza per progettazione**. Ogni DTO di input rappresenta un **contratto semantico** che definisce non solo la struttura dei dati, ma anche le regole di business che li governano.
 
-// DTO per ricerca
-@Data
-@Builder
-public class GameSearchCriteria {
-    private String title;
-    private Long developerId;
-    private Long publisherId;
-    private List<Long> genreIds;
-    private List<Long> platformIds;
-    private BigDecimal minPrice;
-    private BigDecimal maxPrice;
-    private LocalDate releaseDateFrom;
-    private LocalDate releaseDateTo;
-    private EsrbRating esrbRating;
-    private Double minRating;
-    private String sortBy; // title, price, releaseDate, rating
-    private String sortDirection; // asc, desc
-}
-```
+**DTO per Creazione (Create)**: Definiscono tutti i campi obbligatori per la creazione di una nuova entità. Implementano **validazioni stringenti** che riflettono le regole di business del dominio. Ogni annotazione di validazione non è solo un controllo tecnico, ma l'espressione di un **invariante di dominio**.
+
+**DTO per Aggiornamento (Update)**: Seguono il **principio della modifica parziale**, dove tutti i campi sono opzionali ma quelli presenti devono rispettare le stesse regole di validazione della creazione. Questo approccio permette aggiornamenti granulari senza compromettere l'integrità dei dati.
+
+**DTO per Ricerca (Search/Filter)**: Incapsulano la **logica di query** in oggetti tipizzati, trasformando parametri di ricerca potenzialmente complessi in strutture dati comprensibili e validabili. Permettono di costruire query dinamiche mantenendo la type-safety.
 
 ### 3.1.4 DTO per Paginazione
-```java
-// Parametri di paginazione
-@Data
-@Builder
-public class PaginationParams {
-    
-    @Min(value = 0, message = "Il numero di pagina deve essere >= 0")
-    private int page = 0;
-    
-    @Min(value = 1, message = "La dimensione della pagina deve essere >= 1")
-    @Max(value = 100, message = "La dimensione della pagina deve essere <= 100")
-    private int size = 10;
-    
-    private String sortBy = "id";
-    private String sortDirection = "asc";
-    
-    public Pageable toPageable() {
-        Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) 
-            ? Sort.Direction.DESC 
-            : Sort.Direction.ASC;
-        
-        return PageRequest.of(page, size, Sort.by(direction, sortBy));
-    }
-}
 
-// Risposta paginata
-@Data
-@Builder
-public class PagedResponse<T> {
-    private List<T> content;
-    private int page;
-    private int size;
-    private long totalElements;
-    private int totalPages;
-    private boolean first;
-    private boolean last;
-    private boolean hasNext;
-    private boolean hasPrevious;
-    
-    public static <T> PagedResponse<T> of(Page<T> page) {
-        return PagedResponse.<T>builder()
-            .content(page.getContent())
-            .page(page.getNumber())
-            .size(page.getSize())
-            .totalElements(page.getTotalElements())
-            .totalPages(page.getTotalPages())
-            .first(page.isFirst())
-            .last(page.isLast())
-            .hasNext(page.hasNext())
-            .hasPrevious(page.hasPrevious())
-            .build();
-    }
-    
-    public static <T, U> PagedResponse<U> of(Page<T> page, List<U> mappedContent) {
-        return PagedResponse.<U>builder()
-            .content(mappedContent)
-            .page(page.getNumber())
-            .size(page.getSize())
-            .totalElements(page.getTotalElements())
-            .totalPages(page.getTotalPages())
-            .first(page.isFirst())
-            .last(page.isLast())
-            .hasNext(page.hasNext())
-            .hasPrevious(page.hasPrevious())
-            .build();
-    }
-}
+La paginazione rappresenta un **pattern architetturale fondamentale** per la gestione di grandi dataset. I DTO di paginazione incapsulano non solo i parametri tecnici (page, size), ma anche la **semantica della navigazione** e dell'ordinamento.
+
+**Principi di Progettazione**:
+- **Limitazione delle Risorse**: Prevenzione di query che potrebbero sovraccaricare il sistema
+- **Esperienza Utente Consistente**: Standardizzazione dei parametri di navigazione
+- **Sicurezza**: Validazione dei parametri per prevenire attacchi di tipo DoS
+- **Performance**: Ottimizzazione delle query attraverso parametri predefiniti
+
+I DTO di paginazione trasformano parametri HTTP grezzi in oggetti di dominio tipizzati, permettendo una gestione uniforme della paginazione in tutto il sistema.
+La **risposta paginata** incapsula non solo i dati richiesti, ma anche i **metadati di navigazione** necessari per costruire interfacce utente intuitive. Questo approccio elimina la necessità di query aggiuntive per ottenere informazioni sulla struttura del dataset.
 ```
 
 ## 3.2 Pattern di Mapping
 
 ### 3.2.1 Mapping Manuale
 
-#### Vantaggi e Svantaggi
-```java
-// Mapping manuale - Controllo completo ma verboso
-@Component
-public class GameMapper {
-    
-    public GameDTO toDTO(Game game) {
-        if (game == null) {
-            return null;
-        }
-        
-        return GameDTO.builder()
-            .id(game.getId())
-            .title(game.getTitle())
-            .description(game.getDescription())
-            .price(game.getPrice())
-            .releaseDate(game.getReleaseDate())
-            .esrbRating(game.getEsrbRating().name())
-            .userRating(game.getUserRating())
-            .developerName(game.getDeveloper() != null ? game.getDeveloper().getName() : null)
-            .publisherName(game.getPublisher() != null ? game.getPublisher().getName() : null)
-            .reviewCount(game.getReviews() != null ? game.getReviews().size() : 0)
-            .averageRating(calculateAverageRating(game.getReviews()))
-            .lastUpdated(game.getUpdatedAt())
-            .build();
-    }
-    
-    public Game toEntity(GameCreateRequest request) {
-        if (request == null) {
-            return null;
-        }
-        
-        Game game = new Game();
-        game.setTitle(request.getTitle());
-        game.setDescription(request.getDescription());
-        game.setLongDescription(request.getLongDescription());
-        game.setPrice(request.getPrice());
-        game.setReleaseDate(request.getReleaseDate());
-        game.setEsrbRating(request.getEsrbRating());
-        game.setTrailerUrl(request.getTrailerUrl());
-        game.setScreenshots(request.getScreenshots());
-        game.setActive(true);
-        game.setCreatedAt(LocalDateTime.now());
-        game.setUpdatedAt(LocalDateTime.now());
-        
-        return game;
-    }
-    
-    public void updateEntity(Game game, GameUpdateRequest request) {
-        if (request == null || game == null) {
-            return;
-        }
-        
-        if (request.getTitle() != null) {
-            game.setTitle(request.getTitle());
-        }
-        if (request.getDescription() != null) {
-            game.setDescription(request.getDescription());
-        }
-        if (request.getLongDescription() != null) {
-            game.setLongDescription(request.getLongDescription());
-        }
-        if (request.getPrice() != null) {
-            game.setPrice(request.getPrice());
-        }
-        if (request.getReleaseDate() != null) {
-            game.setReleaseDate(request.getReleaseDate());
-        }
-        if (request.getEsrbRating() != null) {
-            game.setEsrbRating(request.getEsrbRating());
-        }
-        if (request.getTrailerUrl() != null) {
-            game.setTrailerUrl(request.getTrailerUrl());
-        }
-        if (request.getScreenshots() != null) {
-            game.setScreenshots(request.getScreenshots());
-        }
-        
-        game.setUpdatedAt(LocalDateTime.now());
-    }
-    
-    private Double calculateAverageRating(List<Review> reviews) {
-        if (reviews == null || reviews.isEmpty()) {
-            return null;
-        }
-        
-        return reviews.stream()
-            .mapToDouble(Review::getRating)
-            .average()
-            .orElse(0.0);
-    }
-}
+Il mapping manuale rappresenta l'approccio più **esplicito e controllabile** per la trasformazione tra entità e DTO. Questo pattern offre il massimo controllo sulla logica di trasformazione, permettendo di implementare regole di business complesse direttamente nel processo di mapping.
+
+**Vantaggi Filosofici**:
+- **Trasparenza Semantica**: Ogni trasformazione è esplicita e comprensibile
+- **Controllo Granulare**: Possibilità di implementare logiche di business specifiche
+- **Debugging Facilitato**: Ogni passaggio è tracciabile e modificabile
+- **Flessibilità Massima**: Nessuna limitazione imposta da framework esterni
+
+**Svantaggi Architetturali**:
+- **Verbosità**: Richiede codice boilerplate significativo
+- **Manutenzione**: Ogni modifica alle entità richiede aggiornamenti manuali
+- **Rischio di Inconsistenza**: Possibili errori umani nella sincronizzazione
+
+Il mapping manuale è ideale quando la **logica di trasformazione** è complessa o quando si necessita di **performance ottimizzate** attraverso controllo diretto del processo.
 ```
 
 ### 3.2.2 MapStruct - Mapping Automatico
 
-#### Configurazione Base
-```java
-// Configurazione MapStruct
-@Mapper(
-    componentModel = "spring",
-    unmappedTargetPolicy = ReportingPolicy.WARN,
-    nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE
-)
-public interface GameMapper {
-    
-    // Mapping semplice
-    @Mapping(target = "developerName", source = "developer.name")
-    @Mapping(target = "publisherName", source = "publisher.name")
-    @Mapping(target = "esrbRating", source = "esrbRating", qualifiedByName = "esrbToString")
-    @Mapping(target = "reviewCount", source = "reviews", qualifiedByName = "reviewsToCount")
-    @Mapping(target = "averageRating", source = "reviews", qualifiedByName = "reviewsToAverage")
-    GameDTO toDTO(Game game);
-    
-    // Mapping per lista
-    List<GameDTO> toDTOList(List<Game> games);
-    
-    // Mapping da request a entity
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "developer", ignore = true)
-    @Mapping(target = "publisher", ignore = true)
-    @Mapping(target = "genres", ignore = true)
-    @Mapping(target = "platforms", ignore = true)
-    @Mapping(target = "reviews", ignore = true)
-    @Mapping(target = "userGameLists", ignore = true)
-    @Mapping(target = "active", constant = "true")
-    @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
-    @Mapping(target = "updatedAt", expression = "java(java.time.LocalDateTime.now())")
-    Game toEntity(GameCreateRequest request);
-    
-    // Update mapping
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "developer", ignore = true)
-    @Mapping(target = "publisher", ignore = true)
-    @Mapping(target = "genres", ignore = true)
-    @Mapping(target = "platforms", ignore = true)
-    @Mapping(target = "reviews", ignore = true)
-    @Mapping(target = "userGameLists", ignore = true)
-    @Mapping(target = "active", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", expression = "java(java.time.LocalDateTime.now())")
-    void updateEntity(@MappingTarget Game game, GameUpdateRequest request);
-    
-    // Metodi di supporto
-    @Named("esrbToString")
-    default String esrbToString(EsrbRating esrbRating) {
-        return esrbRating != null ? esrbRating.name() : null;
-    }
-    
-    @Named("reviewsToCount")
-    default Integer reviewsToCount(List<Review> reviews) {
-        return reviews != null ? reviews.size() : 0;
-    }
-    
-    @Named("reviewsToAverage")
-    default Double reviewsToAverage(List<Review> reviews) {
-        if (reviews == null || reviews.isEmpty()) {
-            return null;
-        }
-        
-        return reviews.stream()
-            .mapToDouble(Review::getRating)
-            .average()
-            .orElse(0.0);
-    }
-}
-```
+MapStruct rappresenta l'evoluzione del mapping attraverso **generazione di codice compile-time**. Questo approccio combina la semplicità dichiarativa con le performance del codice generato, eliminando il runtime overhead tipico della reflection.
+
+**Filosofia di MapStruct**:
+- **Convenzione su Configurazione**: Mapping automatico per campi con nomi corrispondenti
+- **Sicurezza Compile-Time**: Errori di mapping rilevati durante la compilazione
+- **Performance Ottimizzate**: Codice generato equivalente al mapping manuale
+- **Estensibilità**: Possibilità di personalizzare la logica attraverso metodi custom
+
+**Principi Architetturali**:
+- **Separazione delle Responsabilità**: Il mapper si occupa solo della trasformazione
+- **Immutabilità**: Supporto nativo per oggetti immutabili
+- **Composizione**: Riutilizzo di mapper attraverso dependency injection
+- **Null Safety**: Gestione automatica dei valori null
+
+MapStruct è ideale per applicazioni dove la **produttività** e la **manutenibilità** sono prioritarie, specialmente in presenza di modelli di dati complessi con molte relazioni.
 
 #### Mapping Complesso con Dipendenze
-```java
-@Mapper(
-    componentModel = "spring",
-    uses = {DeveloperMapper.class, PublisherMapper.class, GenreMapper.class},
-    unmappedTargetPolicy = ReportingPolicy.WARN
-)
-public interface GameDetailMapper {
-    
-    // Mapping completo con oggetti nested
-    @Mapping(target = "developer", source = "developer")
-    @Mapping(target = "publisher", source = "publisher")
-    @Mapping(target = "genres", source = "genres")
-    @Mapping(target = "platforms", source = "platforms")
-    @Mapping(target = "averageRating", source = "reviews", qualifiedByName = "calculateAverage")
-    @Mapping(target = "reviewCount", source = "reviews", qualifiedByName = "countReviews")
-    @Mapping(target = "wishlistCount", source = "userGameLists", qualifiedByName = "countWishlists")
-    GameDetailDTO toDetailDTO(Game game);
-    
-    @Named("calculateAverage")
-    default Double calculateAverage(List<Review> reviews) {
-        if (reviews == null || reviews.isEmpty()) {
-            return null;
-        }
-        
-        return reviews.stream()
-            .filter(review -> review.getRating() != null)
-            .mapToDouble(Review::getRating)
-            .average()
-            .orElse(0.0);
-    }
-    
-    @Named("countReviews")
-    default Integer countReviews(List<Review> reviews) {
-        return reviews != null ? reviews.size() : 0;
-    }
-    
-    @Named("countWishlists")
-    default Integer countWishlists(List<UserGameList> userGameLists) {
-        if (userGameLists == null) {
-            return 0;
-        }
-        
-        return (int) userGameLists.stream()
-            .filter(ugl -> ugl.getListType() == ListType.WISHLIST)
-            .count();
-    }
-}
 
-// Mapper per Developer
-@Mapper(componentModel = "spring")
-public interface DeveloperMapper {
-    
-    @Mapping(target = "gameCount", source = "games", qualifiedByName = "countActiveGames")
-    DeveloperDTO toDTO(Developer developer);
-    
-    @Named("countActiveGames")
-    default Integer countActiveGames(List<Game> games) {
-        if (games == null) {
-            return 0;
-        }
-        
-        return (int) games.stream()
-            .filter(Game::isActive)
-            .count();
-    }
-}
+Il **mapping compositivo** rappresenta uno dei pattern più potenti di MapStruct. Attraverso il meccanismo `uses`, è possibile creare una **rete di mapper interdipendenti** che gestiscono automaticamente la trasformazione di oggetti complessi e delle loro relazioni.
+
+**Principi del Mapping Compositivo**:
+- **Separazione delle Responsabilità**: Ogni mapper gestisce un singolo tipo di entità
+- **Riutilizzo**: I mapper possono essere composti per creare trasformazioni complesse
+- **Dependency Injection**: Integrazione automatica con il container Spring
+- **Lazy Loading**: Gestione intelligente delle relazioni per evitare N+1 queries
+
+Questo approccio permette di costruire **architetture di mapping scalabili** dove l'aggiunta di nuove entità non richiede modifiche ai mapper esistenti.
 ```
 
 ### 3.2.3 Mapping Condizionale e Personalizzato
 
 #### Mapping Basato su Contesto
-```java
-@Mapper(componentModel = "spring")
-public interface GameMapper {
-    
-    // Mapping diverso per utenti autenticati
-    @Mapping(target = "userRating", source = "game", qualifiedByName = "getUserRating")
-    @Mapping(target = "inWishlist", source = "game", qualifiedByName = "isInWishlist")
-    @Mapping(target = "owned", source = "game", qualifiedByName = "isOwned")
-    GameDTO toDTOForUser(Game game, @Context User currentUser);
-    
-    // Mapping per amministratori (più dettagli)
-    @Mapping(target = "createdBy", source = "createdBy.username")
-    @Mapping(target = "lastModifiedBy", source = "lastModifiedBy.username")
-    @Mapping(target = "totalRevenue", source = ".", qualifiedByName = "calculateRevenue")
-    GameAdminDTO toAdminDTO(Game game);
-    
-    @Named("getUserRating")
-    default Double getUserRating(Game game, @Context User currentUser) {
-        if (currentUser == null || game.getReviews() == null) {
-            return null;
-        }
-        
-        return game.getReviews().stream()
-            .filter(review -> review.getUser().getId().equals(currentUser.getId()))
-            .findFirst()
-            .map(Review::getRating)
-            .orElse(null);
-    }
-    
-    @Named("isInWishlist")
-    default Boolean isInWishlist(Game game, @Context User currentUser) {
-        if (currentUser == null || game.getUserGameLists() == null) {
-            return false;
-        }
-        
-        return game.getUserGameLists().stream()
-            .anyMatch(ugl -> ugl.getUser().getId().equals(currentUser.getId()) 
-                          && ugl.getListType() == ListType.WISHLIST);
-    }
-    
-    @Named("isOwned")
-    default Boolean isOwned(Game game, @Context User currentUser) {
-        if (currentUser == null || game.getUserGameLists() == null) {
-            return false;
-        }
-        
-        return game.getUserGameLists().stream()
-            .anyMatch(ugl -> ugl.getUser().getId().equals(currentUser.getId()) 
-                          && ugl.getListType() == ListType.OWNED);
-    }
-    
-    @Named("calculateRevenue")
-    default BigDecimal calculateRevenue(Game game) {
-        if (game.getUserGameLists() == null) {
-            return BigDecimal.ZERO;
-        }
-        
-        long ownedCount = game.getUserGameLists().stream()
-            .filter(ugl -> ugl.getListType() == ListType.OWNED)
-            .count();
-        
-        return game.getPrice().multiply(BigDecimal.valueOf(ownedCount));
-    }
-}
+
+Il **mapping contestuale** rappresenta l'evoluzione del pattern DTO verso la **personalizzazione semantica**. Questo approccio riconosce che la stessa entità può avere rappresentazioni diverse a seconda del **contesto d'uso** e dell'**identità dell'osservatore**.
+
+**Principi del Mapping Contestuale**:
+- **Personalizzazione**: Ogni utente riceve una vista personalizzata dei dati
+- **Sicurezza**: Informazioni sensibili vengono filtrate in base ai permessi
+- **Performance**: Solo i dati necessari vengono calcolati e trasferiti
+- **Esperienza Utente**: L'interfaccia si adatta al ruolo e alle preferenze dell'utente
+
+**Architettura Multi-Vista**:
+- **Vista Pubblica**: Informazioni base accessibili a tutti
+- **Vista Utente**: Dati personalizzati per utenti autenticati
+- **Vista Amministratore**: Informazioni complete per la gestione
+
+Questo pattern elimina la necessità di query multiple per ottenere informazioni contestuali, incorporando la logica di personalizzazione direttamente nel processo di mapping.
 ```
 
 #### Mapping con Validazione
-```java
-@Mapper(componentModel = "spring")
-public interface GameMapper {
-    
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "active", constant = "true")
-    @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
-    @Mapping(target = "updatedAt", expression = "java(java.time.LocalDateTime.now())")
-    @Mapping(target = "price", source = "price", qualifiedByName = "validatePrice")
-    @Mapping(target = "title", source = "title", qualifiedByName = "sanitizeTitle")
-    Game toEntity(GameCreateRequest request);
-    
-    @Named("validatePrice")
-    default BigDecimal validatePrice(BigDecimal price) {
-        if (price == null) {
-            throw new ValidationException("Il prezzo è obbligatorio");
-        }
-        
-        if (price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ValidationException("Il prezzo deve essere maggiore di zero");
-        }
-        
-        if (price.compareTo(BigDecimal.valueOf(999.99)) > 0) {
-            throw new ValidationException("Il prezzo non può superare 999.99");
-        }
-        
-        return price.setScale(2, RoundingMode.HALF_UP);
-    }
-    
-    @Named("sanitizeTitle")
-    default String sanitizeTitle(String title) {
-        if (title == null) {
-            return null;
-        }
-        
-        // Rimuove caratteri speciali e normalizza
-        String sanitized = title.trim()
-            .replaceAll("[^a-zA-Z0-9\\s\\-\\:]", "")
-            .replaceAll("\\s+", " ");
-        
-        if (sanitized.length() > 255) {
-            sanitized = sanitized.substring(0, 255);
-        }
-        
-        return sanitized;
-    }
-}
+
+Il **mapping validativo** integra la logica di trasformazione con la **validazione semantica** e la **sanitizzazione dei dati**. Questo approccio implementa il principio della **sicurezza per progettazione**, garantendo che i dati siano sempre in uno stato consistente e sicuro.
+
+**Principi della Validazione Integrata**:
+- **Fail-Fast**: Errori rilevati immediatamente durante la trasformazione
+- **Sanitizzazione**: Normalizzazione automatica dei dati in input
+- **Invarianti di Dominio**: Applicazione delle regole di business durante il mapping
+- **Tracciabilità**: Ogni errore è associato al campo specifico che lo ha generato
+
+**Vantaggi Architetturali**:
+- **Centralizzazione**: Logica di validazione concentrata nei mapper
+- **Riutilizzo**: Regole di validazione condivise tra diversi contesti
+- **Performance**: Validazione e trasformazione in un singolo passaggio
+- **Manutenibilità**: Modifiche alle regole di business localizzate
+
+Questo pattern è particolarmente efficace per **API pubbliche** dove la qualità e la sicurezza dei dati sono critiche.
 ```
 
 ## 3.3 Strategie di Mapping Avanzate
@@ -681,193 +190,97 @@ public interface GameMapper {
 ### 3.3.1 Mapping Lazy e Performance
 
 #### Projection per Performance
-```java
-// Interface-based projection
-public interface GameSummaryProjection {
-    Long getId();
-    String getTitle();
-    BigDecimal getPrice();
-    String getDeveloperName();
-    Double getUserRating();
-    LocalDate getReleaseDate();
-}
 
-// Class-based projection
-@Data
-@AllArgsConstructor
-public class GameSummaryProjection {
-    private Long id;
-    private String title;
-    private BigDecimal price;
-    private String developerName;
-    private Double userRating;
-    private LocalDate releaseDate;
-}
+Le **projection** rappresentano una strategia fondamentale per ottimizzare le performance quando si lavora con DTO. Questo pattern permette di **selezionare solo i campi necessari** direttamente a livello di database, eliminando il trasferimento di dati non utilizzati.
 
-// Repository con projection
-@Repository
-public interface GameRepository extends JpaRepository<Game, Long> {
-    
-    @Query("SELECT g.id as id, g.title as title, g.price as price, " +
-           "d.name as developerName, g.userRating as userRating, " +
-           "g.releaseDate as releaseDate " +
-           "FROM Game g JOIN g.developer d WHERE g.active = true")
-    Page<GameSummaryProjection> findGameSummaries(Pageable pageable);
-    
-    @Query("SELECT new com.videogames.dto.GameSummaryProjection(" +
-           "g.id, g.title, g.price, d.name, g.userRating, g.releaseDate) " +
-           "FROM Game g JOIN g.developer d WHERE g.active = true")
-    Page<GameSummaryProjection> findGameSummariesConstructor(Pageable pageable);
-}
+**Tipi di Projection**:
+- **Interface-based**: Definiscono un contratto per i dati richiesti
+- **Class-based**: Utilizzano costruttori per la materializzazione diretta
+- **Dynamic**: Permettono selezioni di campi configurabili a runtime
+
+**Vantaggi delle Projection**:
+- **Riduzione del Traffico di Rete**: Solo i dati necessari vengono trasferiti
+- **Ottimizzazione della Memoria**: Minore utilizzo di heap per oggetti più piccoli
+- **Performance del Database**: Query più efficienti con SELECT specifiche
+- **Scalabilità**: Migliore gestione di grandi volumi di dati
 ```
 
 #### Mapping con EntityGraph
-```java
-@Repository
-public interface GameRepository extends JpaRepository<Game, Long> {
-    
-    @EntityGraph(attributePaths = {"developer", "publisher", "genres", "platforms"})
-    @Query("SELECT g FROM Game g WHERE g.id = :id AND g.active = true")
-    Optional<Game> findByIdWithDetails(@Param("id") Long id);
-    
-    @EntityGraph(attributePaths = {"developer", "publisher"})
-    Page<Game> findByActiveTrue(Pageable pageable);
-}
 
-// Service con mapping ottimizzato
-@Service
-public class GameService {
-    
-    public GameDetailDTO findGameDetails(Long id) {
-        Game game = gameRepository.findByIdWithDetails(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Gioco non trovato"));
-        
-        return gameDetailMapper.toDetailDTO(game);
-    }
-    
-    public PagedResponse<GameDTO> findAllGames(Pageable pageable) {
-        Page<Game> games = gameRepository.findByActiveTrue(pageable);
-        
-        List<GameDTO> gameDTOs = games.getContent().stream()
-            .map(gameMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        return PagedResponse.of(games, gameDTOs);
-    }
-}
+L'**EntityGraph** rappresenta una strategia avanzata per il controllo del **lazy loading** in JPA. Questo pattern permette di definire esattamente quali relazioni devono essere caricate eagerly, ottimizzando le performance e prevenendo il problema N+1.
+
+**Principi dell'EntityGraph**:
+- **Controllo Granulare**: Definizione precisa delle relazioni da caricare
+- **Prevenzione N+1**: Eliminazione di query multiple attraverso JOIN
+- **Flessibilità**: Diversi grafi per diversi casi d'uso
+- **Performance Predictable**: Comportamento di caricamento deterministico
+
+**Strategie di Applicazione**:
+- **Fetch Graphs**: Caricano solo le relazioni specificate
+- **Load Graphs**: Caricano le relazioni specificate più quelle eager di default
+- **Dynamic Graphs**: Costruzione programmatica per casi complessi
 ```
 
 ### 3.3.2 Mapping Asincrono
 
 #### Mapping con CompletableFuture
-```java
-@Service
-public class GameService {
-    
-    @Async
-    public CompletableFuture<List<GameDTO>> findGamesAsync(List<Long> gameIds) {
-        List<Game> games = gameRepository.findAllById(gameIds);
-        
-        List<GameDTO> gameDTOs = games.parallelStream()
-            .map(this::mapToDTO)
-            .collect(Collectors.toList());
-        
-        return CompletableFuture.completedFuture(gameDTOs);
-    }
-    
-    private GameDTO mapToDTO(Game game) {
-        // Mapping complesso che può richiedere tempo
-        GameDTO dto = gameMapper.toDTO(game);
-        
-        // Arricchimento con dati esterni
-        enrichWithExternalData(dto);
-        
-        return dto;
-    }
-    
-    private void enrichWithExternalData(GameDTO dto) {
-        // Chiamate a servizi esterni, calcoli complessi, etc.
-        // Simulazione di operazione costosa
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-}
+
+Il **mapping asincrono** diventa essenziale quando la trasformazione DTO richiede operazioni costose come chiamate a servizi esterni, calcoli complessi o arricchimenti di dati. Questo pattern permette di **parallelizzare** le operazioni di mapping, migliorando significativamente le performance.
+
+**Scenari di Applicazione**:
+- **Arricchimento Dati**: Integrazione con servizi esterni
+- **Calcoli Complessi**: Elaborazioni che richiedono tempo significativo
+- **Batch Processing**: Trasformazione di grandi volumi di dati
+- **Aggregazioni**: Combinazione di dati da multiple sorgenti
+
+**Vantaggi del Mapping Asincrono**:
+- **Throughput Migliorato**: Parallelizzazione delle operazioni
+- **Responsività**: Non blocco del thread principale
+- **Scalabilità**: Migliore utilizzo delle risorse di sistema
+- **Resilienza**: Gestione degli errori per singole operazioni
 ```
 
 ### 3.3.3 Caching dei Mapping
 
 #### Cache per DTO Costosi
-```java
-@Service
-public class GameService {
-    
-    @Cacheable(value = "gameDetails", key = "#id")
-    public GameDetailDTO findGameDetails(Long id) {
-        Game game = gameRepository.findByIdWithDetails(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Gioco non trovato"));
-        
-        return gameDetailMapper.toDetailDTO(game);
-    }
-    
-    @Cacheable(value = "gameStats", key = "'all'")
-    public GameStatsDTO getGameStatistics() {
-        // Calcoli costosi per statistiche
-        long totalGames = gameRepository.count();
-        long activeGames = gameRepository.countByActiveTrue();
-        Double averagePrice = gameRepository.getAveragePrice();
-        
-        Map<String, Long> gamesByGenre = gameRepository.getGameCountByGenre();
-        Map<String, Long> gamesByRating = gameRepository.getGameCountByRating();
-        
-        List<Game> topRated = gameRepository.findTop10ByOrderByUserRatingDesc();
-        List<GameSummaryDTO> topRatedDTOs = topRated.stream()
-            .map(gameMapper::toSummaryDTO)
-            .collect(Collectors.toList());
-        
-        List<Game> newest = gameRepository.findTop10ByOrderByReleaseDateDesc();
-        List<GameSummaryDTO> newestDTOs = newest.stream()
-            .map(gameMapper::toSummaryDTO)
-            .collect(Collectors.toList());
-        
-        return GameStatsDTO.builder()
-            .totalGames(totalGames)
-            .activeGames(activeGames)
-            .averagePrice(averagePrice)
-            .gamesByGenre(gamesByGenre)
-            .gamesByRating(gamesByRating)
-            .topRatedGames(topRatedDTOs)
-            .newestGames(newestDTOs)
-            .build();
-    }
-    
-    @CacheEvict(value = {"gameDetails", "gameStats"}, allEntries = true)
-    public GameDTO updateGame(Long id, GameUpdateRequest request) {
-        // Aggiornamento che invalida la cache
-        Game game = gameRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Gioco non trovato"));
-        
-        gameMapper.updateEntity(game, request);
-        Game savedGame = gameRepository.save(game);
-        
-        return gameMapper.toDTO(savedGame);
-    }
-}
+
+Il **caching dei DTO** rappresenta una strategia cruciale per ottimizzare le performance quando la trasformazione o il calcolo dei dati è costoso. Questo pattern è particolarmente efficace per **dati aggregati**, **statistiche** e **viste complesse** che cambiano raramente.
+
+**Strategie di Caching**:
+- **Entity-Level**: Cache delle entità prima del mapping
+- **DTO-Level**: Cache del risultato finale della trasformazione
+- **Partial**: Cache di componenti specifici del DTO
+- **Computed**: Cache di valori calcolati e aggregazioni
+
+**Considerazioni Architetturali**:
+- **Invalidazione**: Strategie per mantenere la coerenza dei dati
+- **TTL (Time To Live)**: Gestione dell'obsolescenza automatica
+- **Warming**: Pre-caricamento di cache per dati critici
+- **Eviction**: Politiche di rimozione per gestire la memoria
 ```
 
 ## 3.4 Best Practices
 
 ### 3.4.1 Principi Generali
 
-1. **Separazione delle Responsabilità**
-   - DTO per trasferimento dati
-   - Entity per persistenza
-   - Mapper per conversione
+**1. Separazione delle Responsabilità**
+- **DTO**: Esclusivamente per il trasferimento e la rappresentazione dei dati
+- **Entity**: Gestione della persistenza e delle relazioni di dominio
+- **Mapper**: Logica di trasformazione isolata e testabile
 
-2. **Immutabilità dei DTO**
-```java
+**2. Immutabilità dei DTO**
+I DTO dovrebbero essere **immutabili per progettazione**, utilizzando il pattern Builder e campi final. Questo garantisce thread-safety e previene modifiche accidentali durante il trasferimento.
+
+**3. Validazione Stratificata**
+- **Sintassi**: Validazione della struttura e dei tipi
+- **Semantica**: Validazione delle regole di business
+- **Contesto**: Validazione basata sullo stato dell'applicazione
+
+**4. Naming Convention Semantico**
+I nomi dei DTO devono riflettere il loro **scopo semantico** (es. `GameSummaryDTO`, `GameDetailDTO`) piuttosto che la loro struttura tecnica.
+
+**5. Versionamento dei DTO**
+Implementare strategie di versionamento per gestire l'evoluzione delle API senza rompere la compatibilità con i client esistenti.
 // DTO immutabile
 @Value
 @Builder

@@ -2,9 +2,17 @@
 
 ## 4.1 Setup Iniziale del Progetto
 
-### 4.1.1 Struttura Maven
+### 4.1.1 Configurazione Maven: Fondamenta del Progetto
 
-**pom.xml Completo**:
+**Perché iniziamo con Maven?**
+Maven è il nostro sistema di gestione delle dipendenze e build automation. La configurazione corretta del `pom.xml` è cruciale perché definisce:
+- Le dipendenze del progetto e le loro versioni
+- I plugin necessari per la compilazione e il packaging
+- Le proprietà di configurazione globali
+
+**Dove creare il file:** Il file `pom.xml` deve essere posizionato nella **root directory** del progetto (stesso livello della cartella `src/`).
+
+**Struttura del pom.xml spiegata sezione per sezione:**
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" 
@@ -26,122 +34,163 @@
     <name>videogiochi</name>
     <description>Libreria Videogiochi - Sistema di gestione collezioni</description>
     
+    <!-- SEZIONE 1: Proprietà del Progetto -->
+    <!-- Queste proprietà centralizzano le versioni delle dipendenze per evitare duplicazioni -->
     <properties>
-        <java.version>21</java.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <springdoc.version>2.2.0</springdoc.version>
-        <testcontainers.version>1.19.1</testcontainers.version>
+        <java.version>21</java.version> <!-- Versione Java: usiamo la 21 per le feature moderne -->
+        <mapstruct.version>1.5.5.Final</mapstruct.version> <!-- Per il mapping automatico DTO-Entity -->
+        <springdoc.version>2.2.0</springdoc.version> <!-- Per la documentazione API automatica -->
+        <testcontainers.version>1.19.1</testcontainers.version> <!-- Per i test di integrazione -->
     </properties>
     
     <dependencies>
-        <!-- Spring Boot Starters -->
+        <!-- SEZIONE 2: Spring Boot Starters -->
+        <!-- Gli starter sono collezioni pre-configurate di dipendenze per funzionalità specifiche -->
+        <!-- Web MVC: Fornisce tutto il necessario per creare API REST -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <!-- Include: Spring MVC, Tomcat embedded, Jackson per JSON, Validation -->
         </dependency>
         
+        <!-- JPA/Hibernate: Per l'accesso ai dati e ORM -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <!-- Include: Hibernate, Spring Data JPA, Connection pooling -->
         </dependency>
         
+        <!-- Security: Autenticazione, autorizzazione, protezione CSRF -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+            <!-- Include: Spring Security Core, Web, Config -->
         </dependency>
         
+        <!-- Validation: Validazione automatica dei dati in input -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+            <!-- Include: Hibernate Validator, Bean Validation API -->
         </dependency>
         
+        <!-- Cache: Sistema di caching per migliorare le performance -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
+            <!-- Include: Spring Cache abstraction, supporto per vari provider -->
         </dependency>
         
+        <!-- Thymeleaf: Template engine per le pagine web (opzionale se usi solo API) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            <!-- Include: Thymeleaf engine, integrazione Spring -->
         </dependency>
         
-        <!-- Database -->
+        <!-- SEZIONE 3: Database e Persistenza -->
+        <!-- Driver MySQL: Connessione al database -->
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
-            <scope>runtime</scope>
+            <scope>runtime</scope> <!-- Solo a runtime, non serve per la compilazione -->
+            <!-- Fornisce il driver JDBC per MySQL 8+ -->
         </dependency>
         
+        <!-- Flyway Core: Gestione delle migrazioni del database -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+            <!-- Permette di versionare e applicare modifiche al DB automaticamente -->
         </dependency>
         
+        <!-- Flyway MySQL: Supporto specifico per MySQL -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
+            <!-- Estensioni specifiche per MySQL (sintassi, tipi di dato) -->
         </dependency>
         
-        <!-- Utilities -->
+        <!-- SEZIONE 4: Librerie di Utilità -->
+        <!-- Lombok: Riduce il boilerplate code (getter, setter, costruttori) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <optional>true</optional> <!-- Non transitiva: ogni modulo deve dichiararla -->
+            <!-- Genera automaticamente metodi comuni tramite annotazioni -->
         </dependency>
         
+        <!-- MapStruct: Mapping automatico tra oggetti (Entity ↔ DTO) -->
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
             <version>${mapstruct.version}</version>
+            <!-- Genera mapper type-safe a compile-time -->
         </dependency>
         
-        <!-- Documentation -->
+        <!-- SEZIONE 5: Documentazione API -->
+        <!-- SpringDoc OpenAPI: Genera automaticamente documentazione Swagger -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+            <!-- Crea interfaccia web per testare le API e documentazione JSON/YAML -->
         </dependency>
         
-        <!-- Testing -->
+        <!-- SEZIONE 6: Testing -->
+        <!-- Spring Boot Test: Suite completa per test di integrazione -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+            <scope>test</scope> <!-- Solo per i test, non inclusa nel JAR finale -->
+            <!-- Include: JUnit 5, Mockito, AssertJ, Hamcrest, Spring Test -->
         </dependency>
         
+        <!-- Spring Security Test: Utilità per testare la sicurezza -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
+            <!-- Fornisce @WithMockUser, @WithUserDetails per test autenticati -->
         </dependency>
         
+        <!-- Testcontainers JUnit: Integrazione con JUnit 5 -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${testcontainers.version}</version>
             <scope>test</scope>
+            <!-- Gestisce il ciclo di vita dei container nei test -->
         </dependency>
         
+        <!-- Testcontainers MySQL: Container MySQL per test di integrazione -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>mysql</artifactId>
             <version>${testcontainers.version}</version>
             <scope>test</scope>
+            <!-- Avvia automaticamente un'istanza MySQL isolata per ogni test -->
         </dependency>
     </dependencies>
     
+    <!-- SEZIONE 7: Build Configuration -->
+    <!-- I plugin definiscono come compilare, processare e packagere l'applicazione -->
     <build>
         <plugins>
+            <!-- Maven Compiler: Configura la compilazione Java -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <!-- Annotation Processors: Elaborano annotazioni a compile-time -->
                     <annotationProcessorPaths>
+                        <!-- Lombok: Genera codice da annotazioni (@Getter, @Setter, etc.) -->
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
                         </path>
+                        <!-- MapStruct: Genera implementazioni dei mapper -->
                         <path>
                             <groupId>org.mapstruct</groupId>
                             <artifactId>mapstruct-processor</artifactId>
@@ -151,10 +200,12 @@
                 </configuration>
             </plugin>
             
+            <!-- Spring Boot Plugin: Crea JAR eseguibile con server embedded -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Esclude Lombok dal JAR finale (serve solo a compile-time) -->
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -164,13 +215,16 @@
                 </configuration>
             </plugin>
             
+            <!-- Flyway Plugin: Gestisce migrazioni database da Maven -->
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Configurazione connessione DB per comandi Maven -->
                     <url>jdbc:mysql://localhost:3306/videogiochi</url>
                     <user>videogiochi_app</user>
                     <password>secure_password</password>
+                    <!-- Permette comandi: mvn flyway:migrate, mvn flyway:info, etc. -->
                 </configuration>
             </plugin>
         </plugins>
@@ -178,164 +232,214 @@
 </project>
 ```
 
-### 4.1.2 Configurazione Application Properties
+### 4.1.2 Configurazione Application Properties: Il Cuore dell'Applicazione
 
-**application.yml**:
+**Perché usiamo application.yml invece di application.properties?**
+YAML offre una sintassi più leggibile e strutturata, ideale per configurazioni complesse con gerarchie annidate.
+
+**Dove posizionare il file:** Il file `application.yml` deve essere inserito in `src/main/resources/`.
+
+**Struttura delle configurazioni spiegata sezione per sezione:**
 ```yaml
+# SEZIONE 1: Configurazione Base dell'Applicazione
 spring:
   application:
-    name: videogiochi
+    name: videogiochi  # Nome dell'applicazione per logging e monitoring
   
   profiles:
-    active: development
+    active: development  # Profilo attivo (development, test, production)
+    # I profili permettono configurazioni diverse per ambienti diversi
   
+  # SEZIONE 2: Configurazione Database
   datasource:
+    # URL con parametri di sicurezza e timezone
     url: jdbc:mysql://localhost:3306/videogiochi?useSSL=true&serverTimezone=UTC
-    username: ${DB_USERNAME:videogiochi_app}
-    password: ${DB_PASSWORD:secure_password}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    # Variabili d'ambiente con fallback per sicurezza
+    username: ${DB_USERNAME:videogiochi_app}  # Usa env var o default
+    password: ${DB_PASSWORD:secure_password}   # Usa env var o default
+    driver-class-name: com.mysql.cj.jdbc.Driver  # Driver MySQL 8+
+    
+    # HikariCP: Pool di connessioni ad alte performance
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 300000
-      max-lifetime: 600000
-      connection-test-query: SELECT 1
+      maximum-pool-size: 20      # Max connessioni simultanee
+      minimum-idle: 5            # Connessioni sempre aperte
+      idle-timeout: 300000       # Timeout connessioni inattive (5 min)
+      max-lifetime: 600000       # Vita massima connessione (10 min)
+      connection-test-query: SELECT 1  # Query per testare connessioni
   
+  # SEZIONE 3: Configurazione JPA/Hibernate
   jpa:
     hibernate:
-      ddl-auto: validate
-    show-sql: false
+      ddl-auto: validate  # Non modifica schema, solo validazione (sicuro per prod)
+    show-sql: false       # Non mostra SQL in console (attivare solo per debug)
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: true
-        use_sql_comments: true
+        dialect: org.hibernate.dialect.MySQL8Dialect  # Ottimizzazioni MySQL 8
+        format_sql: true          # Formatta SQL nei log per leggibilità
+        use_sql_comments: true    # Aggiunge commenti SQL per debug
         jdbc:
-          batch_size: 25
-        order_inserts: true
-        order_updates: true
+          batch_size: 25          # Raggruppa operazioni per performance
+        order_inserts: true       # Ottimizza ordine INSERT
+        order_updates: true       # Ottimizza ordine UPDATE
   
+  # SEZIONE 4: Configurazione Flyway (Migrazioni Database)
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+    enabled: true                        # Abilita migrazioni automatiche
+    locations: classpath:db/migration    # Cartella script SQL
+    baseline-on-migrate: true            # Crea baseline se DB non vuoto
   
+  # SEZIONE 5: Configurazione Cache
   cache:
-    type: simple
-    cache-names:
-      - games
-      - users
-      - statistics
-      - genres
-      - platforms
+    type: simple              # Cache in memoria (per sviluppo)
+    cache-names:              # Nomi cache predefinite
+      - games                 # Cache per giochi
+      - users                 # Cache per utenti
+      - statistics            # Cache per statistiche
+      - genres                # Cache per generi
+      - platforms             # Cache per piattaforme
   
+  # SEZIONE 6: Configurazione Security (Base)
   security:
-    user:
+    user:                     # Utente di default per sviluppo
       name: admin
-      password: admin123
-      roles: ADMIN
+      password: admin123      # CAMBIARE in produzione!
+      roles: ADMIN            # Ruolo amministratore
 
+# SEZIONE 7: Configurazione Server
 server:
-  port: 8080
+  port: 8080                    # Porta dell'applicazione
   servlet:
-    context-path: /api
+    context-path: /api          # Prefisso per tutte le API (/api/users, /api/games, etc.)
   compression:
-    enabled: true
+    enabled: true               # Compressione HTTP per ridurre traffico
+    # Tipi MIME da comprimere per ottimizzare le performance
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
   
+# SEZIONE 8: Configurazione Logging
 logging:
-  level:
-    mc.videogiochi: INFO
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  level:                        # Livelli di log per package specifici
+    mc.videogiochi: INFO        # Log applicazione: solo INFO e superiori
+    org.springframework.security: DEBUG  # Debug sicurezza per sviluppo
+    org.hibernate.SQL: DEBUG    # Mostra query SQL eseguite
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # Mostra parametri query
   pattern:
+    # Formato log console: timestamp - messaggio
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    # Formato log file: timestamp [thread] livello logger - messaggio
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
-    name: logs/videogiochi.log
+    name: logs/videogiochi.log  # File di log (cartella logs/ creata automaticamente)
 
+# SEZIONE 9: Configurazioni Custom dell'Applicazione
 app:
   security:
-    jwt:
-      secret: ${JWT_SECRET:mySecretKey}
-      expiration: 86400000 # 24 hours
+    jwt:                        # Configurazione JSON Web Token
+      secret: ${JWT_SECRET:mySecretKey}  # Chiave segreta (usa variabile ambiente!)
+      expiration: 86400000      # Scadenza token: 24 ore in millisecondi
     session:
-      timeout-minutes: 30
-      max-login-attempts: 5
+      timeout-minutes: 30       # Timeout sessione utente
+      max-login-attempts: 5     # Tentativi login prima del blocco
   
-  upload:
-    max-file-size: 10MB
-    max-request-size: 10MB
-    upload-dir: uploads/
+  upload:                       # Configurazione upload file
+    max-file-size: 10MB         # Dimensione massima singolo file
+    max-request-size: 10MB      # Dimensione massima richiesta HTTP
+    upload-dir: uploads/        # Cartella di destinazione upload
   
-  cache:
-    enabled: true
-    ttl-minutes: 60
+  cache:                        # Configurazioni cache custom
+    enabled: true               # Abilita caching applicazione
+    ttl-minutes: 60             # Time-to-live cache: 1 ora
   
-  pagination:
-    default-page-size: 20
-    max-page-size: 100
+  pagination:                   # Configurazioni paginazione
+    default-page-size: 20       # Elementi per pagina di default
+    max-page-size: 100          # Massimo elementi per pagina
 
+# SEZIONE 10: Configurazione Actuator (Monitoring)
 management:
   endpoints:
     web:
       exposure:
+        # Endpoint esposti per monitoring (health check, metriche, etc.)
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: when-authorized  # Dettagli health solo se autorizzato
 ```
 
-## 4.2 Layer Domain - Entità JPA
+## 4.2 Layer Domain - Entità JPA: La Struttura dei Dati
 
-### 4.2.1 Entità Base
+**Perché iniziamo con le entità?**
+Le entità JPA rappresentano la struttura dei nostri dati e definiscono come l'applicazione interagisce con il database. Sono il cuore del Domain Layer.
 
-**BaseEntity.java**:
+**Dove posizionare le entità:** Tutte le entità vanno nel package `src/main/java/mc/videogiochi/domain/entity/`.
+
+### 4.2.1 Entità Base: Fondamenta Comuni
+
+**Perché creare una BaseEntity?**
+Evita duplicazione di codice per campi comuni (ID, timestamp, versioning) e garantisce consistenza tra tutte le entità.
+
+**BaseEntity.java** - Posizionare in `src/main/java/mc/videogiochi/domain/entity/BaseEntity.java`:
 ```java
 package mc.videogiochi.domain.entity;
 
+// Import JPA per persistenza
 import jakarta.persistence.*;
+// Import Lombok per ridurre boilerplate
 import lombok.Getter;
 import lombok.Setter;
+// Import Spring Data per auditing automatico
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+// @MappedSuperclass: Non crea tabella, ma eredita campi alle entità figlie
 @MappedSuperclass
+// @EntityListeners: Abilita auditing automatico (createdAt, updatedAt)
 @EntityListeners(AuditingEntityListener.class)
+// Lombok: genera automaticamente getter e setter
 @Getter
 @Setter
 public abstract class BaseEntity {
     
+    // Chiave primaria auto-incrementale
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // MySQL AUTO_INCREMENT
     private Long id;
     
+    // Timestamp creazione: impostato automaticamente alla creazione
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     
+    // Timestamp ultima modifica: aggiornato automaticamente
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    // Versioning per Optimistic Locking (prevenzione conflitti concorrenti)
     @Version
     private Long version;
 }
 ```
 
-### 4.2.2 Entità Principali
+### 4.2.2 Entità Principali: Modellazione del Dominio
 
-**User.java**:
+**User.java** - Posizionare in `src/main/java/mc/videogiochi/domain/entity/User.java`:
+
+**Perché User implementa UserDetails?**
+Spring Security richiede questa interfaccia per l'autenticazione. Integriamo direttamente la logica di sicurezza nell'entità per semplicità.
+
+**Spiegazione delle annotazioni e campi:**
 ```java
 package mc.videogiochi.domain.entity;
 
+// Import per JPA e validazione
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+// Import Lombok per ridurre boilerplate
 import lombok.*;
+// Import Spring Security per autenticazione
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -344,28 +448,36 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
+// @Entity: Marca la classe come entità JPA
 @Entity
+// @Table: Specifica il nome della tabella nel database
 @Table(name = "users")
+// Lombok: genera getter, setter, costruttori e builder pattern
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+// Estende BaseEntity per ereditare id, timestamps e versioning
+// Implementa UserDetails per integrazione con Spring Security
 public class User extends BaseEntity implements UserDetails {
     
+    // Campo username: identificativo univoco dell'utente
     @Column(name = "username", unique = true, nullable = false, length = 50)
-    @NotBlank(message = "Username è obbligatorio")
+    @NotBlank(message = "Username è obbligatorio")  // Validazione: non vuoto
     @Size(min = 3, max = 50, message = "Username deve essere tra 3 e 50 caratteri")
     private String username;
     
+    // Campo email: per comunicazioni e login alternativo
     @Column(name = "email", unique = true, nullable = false, length = 100)
     @NotBlank(message = "Email è obbligatoria")
-    @Email(message = "Email non valida")
+    @Email(message = "Email non valida")  // Validazione formato email
     private String email;
     
+    // Password hashata (mai salvare password in chiaro!)
     @Column(name = "password_hash", nullable = false)
     @NotBlank(message = "Password è obbligatoria")
-    private String password;
+    private String password;  // Sarà hashata dal service prima del salvataggio
     
     @Column(name = "first_name", length = 50)
     private String firstName;
