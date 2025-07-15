@@ -2,45 +2,42 @@
 
 ## 1.1 Model-View-Controller (MVC)
 
-### 1.1.1 Origini e Filosofia del Pattern
+### 1.1.1 La Filosofia della Separazione
 
-Il pattern **Model-View-Controller (MVC)** nasce negli anni '70 presso Xerox PARC come soluzione al problema della crescente complessità delle interfacce utente. La sua filosofia fondamentale si basa sul principio della **separazione delle responsabilità** (Separation of Concerns), che sostiene che ogni componente software dovrebbe avere una singola, ben definita responsabilità.
+Il pattern **Model-View-Controller (MVC)** rappresenta una delle più importanti rivoluzioni concettuali nella progettazione software. Nato negli anni '70, MVC non è semplicemente un modo di organizzare il codice, ma una **filosofia di pensiero** che riconosce la natura intrinsecamente diversa di tre aspetti fondamentali di ogni applicazione interattiva.
 
-La genialità di MVC risiede nel riconoscere che in ogni applicazione interattiva esistono tre aspetti fondamentalmente diversi:
+**Il Principio Fondamentale**: La separazione delle responsabilità (Separation of Concerns) sostiene che problemi diversi dovrebbero essere risolti da componenti diversi. In un'applicazione, distinguiamo:
+
 - **I dati e le regole che li governano** (Model)
-- **La rappresentazione visuale di questi dati** (View) 
-- **La logica che coordina le interazioni** (Controller)
+- **Come questi dati vengono presentati** (View)
+- **Come l'utente interagisce con il sistema** (Controller)
 
-Questi tre aspetti hanno cicli di vita, requisiti di cambiamento e responsabilità completamente diverse. Separarli permette di evolverli indipendentemente, riducendo la complessità e aumentando la manutenibilità.
+Questa separazione non è arbitraria: riflette il fatto che questi tre aspetti evolvono secondo ritmi e logiche completamente diverse. L'interfaccia utente può cambiare per seguire nuove tendenze di design, la logica di business può evolversi per nuovi requisiti, e i dati possono essere ristrutturati per performance, ma ciascuno di questi cambiamenti dovrebbe essere indipendente dagli altri.
 
-### 1.1.2 Anatomia Concettuale dei Componenti
+### 1.1.2 Il Model: Il Cuore Logico
 
-#### Il Model: Custode della Verità
+Il **Model** non è semplicemente un contenitore di dati, ma l'**incarnazione delle regole di business**. È il componente che "sa" cosa significa essere un videogioco, quali operazioni sono valide, e come i dati si relazionano tra loro.
 
-Il **Model** rappresenta il cuore concettuale dell'applicazione. Non è semplicemente un contenitore di dati, ma l'incarnazione delle regole di business e della logica di dominio. Il Model dovrebbe essere completamente indipendente dalla presentazione e dall'interfaccia utente.
-
-**Responsabilità concettuali del Model:**
-- **Integrità dei dati**: Garantisce che i dati rispettino sempre le regole di business
-- **Logica di dominio**: Implementa le operazioni specifiche del dominio applicativo
-- **Persistenza**: Gestisce il salvataggio e recupero dei dati
-- **Notificazione**: Informa i componenti interessati quando lo stato cambia
+**Caratteristiche concettuali del Model:**
+- **Autonomia**: Funziona indipendentemente da come viene presentato
+- **Integrità**: Garantisce che i dati rispettino sempre le regole di business
+- **Responsabilità**: Contiene tutta la logica specifica del dominio
 
 ```java
-// Esempio minimale di Model che incapsula logica di business
-@Entity
+// Esempio minimale: il Model incapsula la logica di business
 public class Game {
     private String title;
     private LocalDate releaseDate;
     private BigDecimal price;
     
-    // Logica di business incapsulata nel Model
+    // Il Model "sa" cosa significa essere una novità
     public boolean isNewRelease() {
         return releaseDate.isAfter(LocalDate.now().minusMonths(6));
     }
     
+    // Il Model gestisce le proprie regole di business
     public void applyDiscount(BigDecimal percentage) {
-        if (percentage.compareTo(BigDecimal.ZERO) < 0 || 
-            percentage.compareTo(new BigDecimal("100")) > 0) {
+        if (percentage.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Sconto non valido");
         }
         this.price = price.multiply(BigDecimal.ONE.subtract(percentage.divide(new BigDecimal("100"))));
@@ -48,282 +45,220 @@ public class Game {
 }
 ```
 
-#### La View: Interprete della Realtà
+### 1.1.3 La View: L'Interprete
 
-La **View** è l'interfaccia tra il mondo digitale dell'applicazione e la percezione umana. Il suo ruolo va oltre la semplice visualizzazione: è responsabile di tradurre i dati astratti del Model in una rappresentazione comprensibile e utilizzabile dall'utente.
+La **View** è il traduttore tra il mondo astratto dei dati e la percezione umana. Il suo compito è rendere comprensibili e utilizzabili le informazioni contenute nel Model, senza mai modificarle direttamente.
 
-**Principi fondamentali della View:**
-- **Passività**: Non dovrebbe mai modificare direttamente i dati
-- **Reattività**: Deve riflettere immediatamente i cambiamenti del Model
-- **Separazione**: Completamente indipendente dalla logica di business
-- **Adattabilità**: Può esistere in multiple forme per lo stesso Model
-
-La View opera secondo il principio della **presentazione dichiarativa**: descrive *cosa* mostrare, non *come* i dati vengono elaborati. Questo permette di cambiare completamente l'aspetto dell'applicazione senza toccare la logica sottostante.
+**Principi della View:**
+- **Passività**: Non modifica mai i dati, li presenta soltanto
+- **Reattività**: Riflette immediatamente i cambiamenti del Model
+- **Adattabilità**: Lo stesso Model può avere multiple rappresentazioni
 
 ```html
-<!-- Esempio di View che si limita alla presentazione -->
+<!-- La View si limita a presentare, non a elaborare -->
 <div class="game-card">
     <h3>{{game.title}}</h3>
     <span class="price">€{{game.price}}</span>
-    <!-- La logica isNewRelease() è nel Model, la View si limita a mostrarla -->
     <span *ngIf="game.isNewRelease" class="badge">Novità!</span>
 </div>
 ```
 
-#### Il Controller: Direttore d'Orchestra
+### 1.1.4 Il Controller: Il Coordinatore
 
-Il **Controller** è il componente più sottile e spesso frainteso di MVC. Non è un contenitore di logica di business, ma piuttosto un **coordinatore intelligente** che orchestra le interazioni tra Model e View. Il Controller implementa il pattern **Mediator**, fungendo da intermediario che conosce come far comunicare i componenti senza che questi si conoscano direttamente.
+Il **Controller** è il componente più sottile di MVC. Non contiene logica di business, ma **coordina** le interazioni tra Model e View. È il punto di ingresso che traduce le azioni dell'utente in operazioni sul Model.
 
-**Filosofia del Controller:**
-- **Orchestrazione**: Coordina il flusso senza implementare logica di dominio
-- **Traduzione**: Converte gli input dell'utente in operazioni sul Model
-- **Routing**: Determina quale View utilizzare in base al contesto
-- **Gestione dello stato**: Mantiene lo stato della sessione utente
-
-Il Controller opera secondo il principio della **responsabilità limitata**: sa *cosa* fare ma delega *come* farlo. Questo lo rende il punto di ingresso ideale per cross-cutting concerns come autenticazione, logging e validazione.
+**Responsabilità del Controller:**
+- **Traduzione**: Converte input utente in operazioni di business
+- **Coordinazione**: Orchestra l'interazione tra componenti
+- **Routing**: Determina quale View utilizzare
 
 ```java
-// Controller che si limita alla coordinazione
+// Il Controller coordina senza implementare logica
 @RestController
 public class GameController {
     private final GameService gameService;
     
     @GetMapping("/games")
     public ResponseEntity<List<GameDTO>> getGames(@RequestParam String filter) {
-        // Traduce la richiesta HTTP in operazione di business
+        // Traduce HTTP in operazione di business
         List<GameDTO> games = gameService.findGamesByFilter(filter);
-        // Coordina la risposta senza implementare logica
         return ResponseEntity.ok(games);
     }
 }
 ```
 
-### 1.1.3 I Benefici Strategici di MVC
+### 1.1.5 I Benefici della Separazione
 
-L'adozione di MVC non è solo una questione di organizzazione del codice, ma una **decisione strategica** che influenza l'intera evoluzione del software.
+**Manutenibilità**: Ogni componente può evolversi indipendentemente. Cambiare l'interfaccia utente non richiede modifiche alla logica di business.
 
-**Scalabilità Concettuale**: MVC permette di ragionare su problemi complessi dividendoli in domini più gestibili. Quando un'applicazione cresce, la separazione delle responsabilità impedisce che la complessità diventi ingestibile.
+**Testabilità**: Ogni componente può essere testato in isolamento, semplificando la verifica della correttezza.
 
-**Evoluzione Indipendente**: I tre componenti possono evolvere secondo ritmi diversi. L'interfaccia utente può essere completamente ridisegnata senza toccare la logica di business, o viceversa.
+**Riusabilità**: Lo stesso Model può supportare multiple View (web, mobile, API).
 
-**Testing Strategico**: La separazione permette di testare la logica di business indipendentemente dall'interfaccia, riducendo drasticamente la complessità dei test e aumentandone l'affidabilità.
+**Scalabilità del Team**: Sviluppatori diversi possono lavorare su componenti diversi senza interferenze.
 
-**Riusabilità Architettonica**: Un Model ben progettato può servire multiple interfacce (web, mobile, API) senza duplicazione di codice.
+### 1.1.6 MVC nel Contesto Moderno
 
-### 1.1.4 Le Sfide e i Compromessi
+MVC rimane fondamentale nelle architetture moderne, evolvendosi in varianti come MVVM per framework reattivi. Nel nostro progetto:
+- **Model**: Entità JPA con logica di business
+- **View**: Template Thymeleaf e risposte JSON
+- **Controller**: Spring MVC Controllers per coordinazione HTTP
 
-Ogni pattern architetturale comporta dei trade-off, e MVC non fa eccezione.
-
-**Complessità Iniziale**: Per applicazioni molto semplici, MVC può sembrare un'over-engineering. Tuttavia, questa complessità iniziale è un investimento che paga dividendi quando l'applicazione cresce.
-
-**Accoppiamento Sottile**: Nonostante la separazione, esiste sempre un accoppiamento concettuale tra i componenti. Il Controller deve conoscere sia il Model che la View, creando una dipendenza a forma di "Y".
-
-**Overhead Cognitivo**: Gli sviluppatori devono costantemente decidere dove posizionare la logica, richiedendo una comprensione profonda dei principi del pattern.
-
-### 1.1.5 MVC nell'Era Moderna: Evoluzione e Adattamenti
-
-L'implementazione moderna di MVC, come quella di Spring Boot, rappresenta un'evoluzione del pattern originale, adattata alle esigenze delle applicazioni enterprise contemporanee.
-
-**Stratificazione del Model**: Il Model moderno non è più un singolo componente, ma una **stratificazione di responsabilità**:
-- **Entity**: Rappresentazione dei dati
-- **Service**: Logica di business
-- **Repository**: Accesso ai dati
-
-Questa stratificazione riflette la crescente complessità delle applicazioni moderne e la necessità di separare ulteriormente le responsabilità.
-
-```java
-// Model stratificato in Spring Boot
-@Entity
-public class Game {
-    // Solo dati e validazioni di base
-}
-
-@Service
-public class GameService {
-    // Logica di business complessa
-    public GameDTO processGameCreation(GameCreateRequest request) {
-        // Orchestrazione di operazioni di business
-    }
-}
-```
-
-**Adattamento alle Architetture Distribuite**: MVC moderno deve confrontarsi con microservizi, API REST e architetture event-driven, mantenendo i suoi principi fondamentali ma adattandoli a contesti distribuiti.
+La stratificazione moderna del Model (Entity, Service, Repository) riflette la crescente complessità delle applicazioni enterprise.
 
 ## 1.2 Layered Architecture (Architettura a Livelli)
 
-### 1.2.1 Filosofia della Stratificazione
+### 1.2.1 La Filosofia della Stratificazione
 
-L'**Architettura a Livelli** rappresenta una delle più antiche e durature metafore organizzative nel software engineering. Ispirata all'architettura di rete OSI e ai principi della geologia, questa architettura riconosce che la complessità software può essere gestita attraverso la **stratificazione delle responsabilità**.
+L'**Architettura a Livelli** applica il principio della **stratificazione delle responsabilità** per gestire la complessità software. Ogni livello ha una responsabilità specifica e può dipendere solo dai livelli sottostanti, creando una gerarchia di astrazione.
 
-Il principio fondamentale è quello della **dipendenza unidirezionale**: ogni livello può dipendere solo dai livelli sottostanti, mai da quelli superiori. Questo crea una **gerarchia di astrazione** dove ogni livello nasconde la complessità di quelli inferiori, fornendo un'interfaccia semplificata a quelli superiori.
+**Principio Fondamentale**: La dipendenza unidirezionale garantisce che ogni livello nasconda la complessità di quelli inferiori, fornendo un'interfaccia semplificata a quelli superiori.
 
-**Vantaggi concettuali della stratificazione:**
-- **Isolamento della complessità**: Ogni livello gestisce un tipo specifico di complessità
+**Benefici della Stratificazione:**
+- **Isolamento**: Ogni livello gestisce un tipo specifico di complessità
 - **Sostituibilità**: Un livello può essere sostituito senza impattare gli altri
-- **Testabilità incrementale**: Ogni livello può essere testato indipendentemente
-- **Comprensibilità**: La struttura riflette il modo naturale di pensare ai problemi
+- **Testabilità**: Ogni livello può essere testato indipendentemente
+- **Comprensibilità**: Struttura che riflette il pensiero naturale sui problemi
 
-### 1.2.2 Anatomia dei Livelli Architetturali
+### 1.2.2 I Tre Livelli Fondamentali
 
-#### Presentation Layer: La Facciata del Sistema
+#### Presentation Layer: L'Interfaccia
 
-Il **Presentation Layer** è l'ambasciatore del sistema verso il mondo esterno. Non è semplicemente un'interfaccia utente, ma il **traduttore** tra il linguaggio del dominio interno e quello del mondo esterno.
+Il **Presentation Layer** è il traduttore tra il mondo esterno e il sistema interno. Gestisce protocolli di comunicazione, validazione degli input e serializzazione delle risposte.
 
-**Responsabilità concettuali:**
-- **Traduzione dei protocolli**: Converte richieste HTTP in chiamate di dominio
-- **Gestione del contesto**: Mantiene informazioni sulla sessione e l'utente
-- **Validazione sintattica**: Verifica la correttezza formale degli input
-- **Serializzazione**: Converte oggetti di dominio in formati di trasporto
+**Responsabilità:**
+- Traduzione delle richieste in operazioni di dominio
+- Gestione del contesto utente e sessione
+- Validazione sintattica degli input
+- Serializzazione delle risposte
 
 ```java
 @RestController
 public class GameController {
-    private final GameService gameService;
-    
     @GetMapping("/games")
-    public ResponseEntity<List<GameDTO>> getGames(
-            @Valid @ModelAttribute GameSearchCriteria criteria) {
-        // Il controller traduce la richiesta HTTP in operazione di dominio
+    public ResponseEntity<List<GameDTO>> getGames(@Valid GameSearchCriteria criteria) {
         List<GameDTO> games = gameService.searchGames(criteria);
         return ResponseEntity.ok(games);
     }
 }
 ```
 
-#### Business Layer: Il Cuore Pulsante del Dominio
+#### Business Layer: Il Cuore Logico
 
-Il **Business Layer** è dove risiede l'essenza dell'applicazione. Qui vengono implementate le regole che definiscono *cosa* significa essere un videogioco, *come* si comporta un utente, *quando* un'operazione è valida.
+Il **Business Layer** contiene l'essenza dell'applicazione: le regole che definiscono cosa significa essere un videogioco, come si comporta un utente, quando un'operazione è valida.
 
-**Responsabilità concettuali del Business Layer:**
-- **Orchestrazione del Dominio**: Coordina operazioni complesse che coinvolgono multiple entità
-- **Applicazione delle Regole**: Implementa le invarianti di business che definiscono la validità delle operazioni
-- **Gestione Transazionale**: Garantisce la consistenza dei dati attraverso operazioni atomiche
-- **Integrazione di Servizi**: Coordina l'interazione con servizi esterni e altri bounded context
+**Responsabilità:**
+- Orchestrazione di operazioni complesse tra multiple entità
+- Applicazione delle regole di business e invarianti
+- Gestione transazionale per garantire consistenza
+- Coordinazione con servizi esterni
 
-**Principi Architetturali:**
-- **Statelessness**: I servizi non mantengono stato tra le chiamate
-- **Idempotenza**: Le operazioni producono lo stesso risultato se ripetute
-- **Fail-Fast**: Validazione immediata per prevenire stati inconsistenti
-- **Event-Driven**: Pubblicazione di eventi per comunicazione asincrona
+**Principi:**
+- **Statelessness**: Nessuno stato mantenuto tra chiamate
+- **Idempotenza**: Stesso risultato per operazioni ripetute
+- **Fail-Fast**: Validazione immediata degli input
 
-Il Business Layer opera come **orchestratore intelligente**, combinando dati da multiple sorgenti, applicando regole complesse e coordinando side-effects come notifiche e audit logging.
+```java
+@Service
+public class GameService {
+    public GameDTO createGame(GameCreateRequest request) {
+        // Validazione regole di business
+        validateGameRules(request);
+        // Orchestrazione operazioni
+        Game game = gameRepository.save(new Game(request));
+        return gameMapper.toDTO(game);
+    }
+}
+```
 ```
 
-#### Data Access Layer: Il Custode della Persistenza
+#### Data Access Layer: Il Custode dei Dati
 
-Il **Data Access Layer** rappresenta il confine tra il mondo degli oggetti e quello relazionale. È responsabile di **tradurre** le operazioni di dominio in operazioni di persistenza, nascondendo la complessità del database sottostante.
+Il **Data Access Layer** traduce le operazioni di dominio in operazioni di persistenza, nascondendo la complessità del database sottostante.
 
-**Responsabilità Architetturali:**
-- **Astrazione della Persistenza**: Nasconde i dettagli implementativi del database
-- **Ottimizzazione delle Query**: Gestisce performance e strategie di caricamento
-- **Gestione delle Transazioni**: Coordina operazioni atomiche sui dati
-- **Mapping Oggetto-Relazionale**: Traduce tra paradigmi diversi
+**Responsabilità:**
+- Astrazione della persistenza dal database specifico
+- Ottimizzazione delle query e strategie di caricamento
+- Mapping tra oggetti e strutture relazionali
+- Gestione delle transazioni sui dati
 
-**Strategie di Implementazione:**
+**Strategie:**
+- **Query Derivate**: Convenzioni di naming per generazione automatica
+- **Query Personalizzate**: Controllo fine per logiche complesse
+- **Criteria API**: Query dinamiche type-safe
+- **Query Native**: Ottimizzazioni specifiche del database
 
-**Query Derivate**: Utilizzano convenzioni di naming per generare automaticamente query SQL, riducendo il boilerplate e aumentando la leggibilità.
-
-**Query Personalizzate**: Per logiche complesse che non possono essere espresse attraverso convenzioni, permettendo controllo fine sulla generazione SQL.
-
-**Criteria API**: Per query dinamiche costruite a runtime, offrendo type-safety e flessibilità per filtri configurabili.
-
-**Query Native**: Per ottimizzazioni specifiche del database o operazioni che richiedono funzionalità SQL avanzate.
-
-**Principi di Design:**
-- **Single Responsibility**: Ogni repository gestisce una singola entità aggregata
-- **Interface Segregation**: Interfacce specifiche per diversi tipi di operazioni
-- **Dependency Inversion**: Dipendenza da astrazioni, non da implementazioni concrete
+```java
+public interface GameRepository extends JpaRepository<Game, Long> {
+    // Query derivata
+    List<Game> findByTitleContaining(String title);
+    
+    // Query personalizzata
+    @Query("SELECT g FROM Game g WHERE g.price < :maxPrice")
+    List<Game> findAffordableGames(@Param("maxPrice") BigDecimal maxPrice);
+}
 ```
 
-### 1.2.3 Vantaggi dell'Architettura a Livelli
+### 1.2.3 Vantaggi e Svantaggi
 
-1. **Separazione delle Responsabilità**: Ogni livello ha un compito specifico
-2. **Riusabilità**: I livelli inferiori possono essere riutilizzati
-3. **Testabilità**: Ogni livello può essere testato indipendentemente
-4. **Manutenibilità**: Modifiche isolate a un livello
-5. **Scalabilità**: I livelli possono essere scalati indipendentemente
+**Vantaggi:**
+- Separazione chiara delle responsabilità
+- Riusabilità dei livelli inferiori
+- Testabilità indipendente di ogni livello
+- Manutenibilità attraverso modifiche isolate
 
-### 1.2.4 Svantaggi e Considerazioni
-
-1. **Performance**: Overhead dovuto ai livelli multipli
-2. **Complessità**: Può essere eccessivo per applicazioni semplici
-3. **Rigidità**: Difficile modificare la struttura una volta stabilita
-4. **Accoppiamento**: Dipendenze tra livelli adiacenti
+**Svantaggi:**
+- Overhead di performance per livelli multipli
+- Complessità eccessiva per applicazioni semplici
+- Rigidità nella modifica della struttura
+```
 
 ## 1.3 Repository Pattern
 
-### 1.3.1 Definizione e Scopo
+### 1.3.1 La Filosofia del Repository
 
-Il **Repository Pattern** incapsula la logica necessaria per accedere alle fonti di dati. Centralizza le funzionalità di accesso ai dati comuni, fornendo una migliore manutenibilità e disaccoppiando l'infrastruttura o la tecnologia utilizzata per accedere ai database dal livello del modello di dominio.
+Il **Repository Pattern** incapsula la logica di accesso ai dati, fornendo un'interfaccia uniforme per le operazioni di persistenza. Disaccoppia il dominio dall'infrastruttura di persistenza, permettendo di cambiare database senza impattare la logica di business.
+
+**Principi Fondamentali:**
+- **Astrazione**: Nasconde i dettagli di persistenza al dominio
+- **Centralizzazione**: Concentra la logica di accesso ai dati
+- **Testabilità**: Permette mock e stub per i test
+- **Consistenza**: Fornisce un'interfaccia uniforme
 
 ### 1.3.2 Implementazione in Spring Data JPA
 
-#### Architettura Stratificata dei Repository
+Spring Data JPA implementa il Repository Pattern attraverso diverse strategie:
 
-L'implementazione moderna del Repository Pattern in Spring Data JPA segue una **architettura stratificata** che combina convenzioni, personalizzazioni e ottimizzazioni.
-
-**Livelli di Astrazione:**
-
-**1. Repository Base Generico**
-Fornisce operazioni comuni a tutte le entità, implementando pattern trasversali come soft delete, auditing e operazioni batch. Questo livello elimina la duplicazione di codice e garantisce consistenza comportamentale.
-
-**2. Repository Specifico di Dominio**
-Estende il repository base con operazioni specifiche dell'entità, utilizzando query derivate per operazioni semplici e query personalizzate per logiche complesse.
-**3. Repository Personalizzato**
-Per query complesse che richiedono logica procedurale, costruzione dinamica di criteri o ottimizzazioni specifiche del database.
-
-**Strategie di Query:**
-
-**Query Derivate**: Utilizzano convenzioni di naming per generare automaticamente implementazioni. Ideali per operazioni semplici e leggibili.
-
-**Query Dichiarative**: Definite tramite annotazioni JPQL o SQL nativo. Offrono controllo preciso sulla generazione delle query.
-
-**Query Statistiche**: Specializzate per aggregazioni e calcoli, spesso utilizzate per dashboard e reporting.
-
-**Query Native**: Per sfruttare funzionalità specifiche del database o ottimizzazioni di performance critiche.
+**Query Derivate**: Convenzioni di naming per generazione automatica
+```java
+List<Game> findByTitleContaining(String title);
 ```
 
-#### Repository Personalizzato: Gestione della Complessità
-
-I **Repository Personalizzati** rappresentano il livello più sofisticato dell'architettura di accesso ai dati, dove vengono implementate logiche che non possono essere espresse attraverso convenzioni o query dichiarative.
-
-**Scenari di Utilizzo:**
-
-**Query Dinamiche**: Costruzione runtime di criteri di ricerca basati su input utente variabili. Utilizzano Criteria API per garantire type-safety e performance ottimali.
-
-**Algoritmi di Raccomandazione**: Implementano logiche complesse che combinano preferenze utente, analisi comportamentali e algoritmi di machine learning per suggerire contenuti pertinenti.
-
-**Aggregazioni Statistiche**: Calcolano metriche di business attraverso query ottimizzate che spesso richiedono JOIN complessi e funzioni di aggregazione avanzate.
-
-**Ottimizzazioni Specifiche**: Implementano strategie di performance per scenari critici, utilizzando hint del database, query native o tecniche di caching avanzate.
-
-**Principi di Implementazione:**
-- **Separation of Concerns**: Interfaccia separata dall'implementazione
-- **Composability**: Metodi riutilizzabili per costruire query complesse
-- **Performance-First**: Ottimizzazione delle query per scenari ad alto carico
-- **Maintainability**: Codice leggibile e ben documentato per logiche complesse
+**Query Dichiarative**: Controllo preciso con JPQL
+```java
+@Query("SELECT g FROM Game g WHERE g.price < :maxPrice")
+List<Game> findAffordableGames(@Param("maxPrice") BigDecimal maxPrice);
 ```
 
-### 1.3.3 Vantaggi Strategici del Repository Pattern
+**Repository Personalizzati**: Per logiche complesse
+```java
+public interface GameRepositoryCustom {
+    List<Game> findWithComplexCriteria(GameSearchCriteria criteria);
+}
+```
 
-**Disaccoppiamento Architetturale**: Il Repository Pattern crea una **barriera di astrazione** tra la logica di business e i dettagli di persistenza, permettendo l'evoluzione indipendente di entrambi i livelli.
+### 1.3.3 Vantaggi del Pattern
 
-**Testabilità Incrementale**: Facilita la creazione di test unitari attraverso mock repositories, permettendo di testare la logica di business senza dipendenze dal database.
+- **Disaccoppiamento**: Separazione tra dominio e persistenza
+- **Testabilità**: Facilita unit testing con mock
+- **Manutenibilità**: Centralizza la logica di accesso ai dati
+- **Flessibilità**: Permette cambi di tecnologia di persistenza
+## Conclusione
 
-**Centralizzazione della Conoscenza**: Concentra tutta la logica di accesso ai dati in un singolo punto, eliminando la duplicazione e garantendo consistenza nelle operazioni.
+Questi pattern architetturali rappresentano i **pilastri fondamentali** per costruire applicazioni enterprise robuste:
 
-**Evoluzione Controllata**: Permette modifiche alle strategie di persistenza senza impattare il codice client, supportando refactoring e ottimizzazioni incrementali.
+- **MVC** fornisce separazione delle responsabilità tra presentazione, logica e dati
+- **Layered Architecture** organizza la complessità attraverso livelli con dipendenze unidirezionali
+- **Repository Pattern** disaccoppia il dominio dalla persistenza
 
-### 1.3.4 Principi di Design Avanzati
-
-**Single Responsibility Principle**: Ogni repository gestisce esclusivamente una singola entità aggregata, mantenendo coesione e riducendo l'accoppiamento.
-
-**Interface Segregation**: Utilizzo di interfacce specifiche per diversi tipi di operazioni (lettura, scrittura, query complesse), evitando dipendenze non necessarie.
-
-**Dependency Inversion**: Dipendenza da astrazioni piuttosto che da implementazioni concrete, facilitando l'inversione di controllo e la testabilità.
-
-**Performance by Design**: Implementazione di strategie di ottimizzazione come EntityGraph, query batch e caching a livello di repository per garantire performance scalabili.
-
-**Naming Semantico**: Convenzioni di naming che riflettono l'intento business piuttosto che i dettagli implementativi, migliorando la leggibilità e la manutenibilità.
-
-Questi pattern architetturali rappresentano i **pilastri fondamentali** per costruire applicazioni enterprise robuste, fornendo una base solida per la separazione delle responsabilità, la scalabilità e l'evoluzione controllata del software.
+Ogni pattern affronta specifici problemi architetturali, e la loro combinazione crea una base solida per applicazioni scalabili e manutenibili.

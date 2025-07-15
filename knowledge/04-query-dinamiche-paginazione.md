@@ -2,54 +2,24 @@
 
 ## 4.1 Query Dinamiche
 
-### 4.1.1 Definizione e Necessità
+**Query Dinamiche** sono query costruite a runtime in base a criteri variabili. Risolvono il problema dell'**esplosione combinatoriale** dei metodi di repository per gestire filtri multipli e opzionali.
 
-**Query Dinamiche** sono query SQL o JPQL costruite a runtime in base a criteri variabili forniti dall'utente. Sono essenziali per implementare funzionalità di ricerca avanzata, filtri multipli e ordinamenti personalizzabili.
-
-### 4.1.2 Problemi delle Query Statiche
-
-#### Esempio Problematico
+**Problema delle Query Statiche:**
 ```java
-// Approccio ingenuo con query multiple
+// Approccio problematico
 @Repository
 public interface GameRepository extends JpaRepository<Game, Long> {
-    
-    // Troppi metodi per ogni combinazione di filtri!
     Page<Game> findByTitle(String title, Pageable pageable);
     Page<Game> findByTitleAndDeveloper(String title, Developer developer, Pageable pageable);
-    Page<Game> findByTitleAndDeveloperAndPriceBetween(
-        String title, Developer developer, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
-    Page<Game> findByDeveloper(Developer developer, Pageable pageable);
-    Page<Game> findByDeveloperAndPriceBetween(
-        Developer developer, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
-    Page<Game> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
-    
-    // ... centinaia di combinazioni possibili!
-    
-    // PROBLEMI:
-    // 1. Esplosione combinatoriale dei metodi
-    // 2. Codice duplicato
-    // 3. Difficile manutenzione
-    // 4. Performance non ottimali
-    // 5. Impossibile gestire filtri opzionali
+    Page<Game> findByTitleAndDeveloperAndPriceBetween(...);
+    // ... centinaia di combinazioni!
 }
 ```
 
-### 4.1.3 Criteria API - Soluzione Elegante
+### Criteria API - Soluzione Dinamica
 
-#### Implementazione Base
+**Implementazione con Criteria API:**
 ```java
-// Interfaccia per query personalizzate
-public interface GameRepositoryCustom {
-    Page<Game> findGamesWithDynamicFilters(
-        GameSearchCriteria criteria, Pageable pageable);
-    
-    List<Game> findRecommendedGames(Long userId, int limit);
-    
-    Map<String, Long> getGameStatistics();
-}
-
-// Implementazione con Criteria API
 @Repository
 public class GameRepositoryCustomImpl implements GameRepositoryCustom {
     
@@ -61,39 +31,18 @@ public class GameRepositoryCustomImpl implements GameRepositoryCustom {
             GameSearchCriteria criteria, Pageable pageable) {
         
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        
-        // Query principale
         CriteriaQuery<Game> query = cb.createQuery(Game.class);
         Root<Game> root = query.from(Game.class);
         
         // Join condizionali
         Join<Game, Developer> developerJoin = null;
-        Join<Game, Publisher> publisherJoin = null;
-        Join<Game, Genre> genreJoin = null;
-        Join<Game, Platform> platformJoin = null;
-        
-        if (needsDeveloperJoin(criteria)) {
+        if (criteria.getDeveloperId() != null) {
             developerJoin = root.join("developer", JoinType.INNER);
         }
         
-        if (needsPublisherJoin(criteria)) {
-            publisherJoin = root.join("publisher", JoinType.INNER);
-        }
+        // Costruzione predicati dinamici
+        List<Predicate> predicates = buildPredicates(cb, root, criteria, developerJoin);
         
-        if (needsGenreJoin(criteria)) {
-            genreJoin = root.join("genres", JoinType.INNER);
-        }
-        
-        if (needsPlatformJoin(criteria)) {
-            platformJoin = root.join("platforms", JoinType.INNER);
-        }
-        
-        // Costruzione predicati
-        List<Predicate> predicates = buildPredicates(
-            cb, root, criteria, developerJoin, publisherJoin, genreJoin, platformJoin
-        );
-        
-        // Applicazione filtri
         if (!predicates.isEmpty()) {
             query.where(predicates.toArray(new Predicate[0]));
         }
@@ -104,34 +53,24 @@ public class GameRepositoryCustomImpl implements GameRepositoryCustom {
             query.orderBy(orders);
         }
         
-        // Esecuzione query principale
+        // Esecuzione con paginazione
         TypedQuery<Game> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult((int) pageable.getOffset());
         typedQuery.setMaxResults(pageable.getPageSize());
         
         List<Game> games = typedQuery.getResultList();
-        
-        // Count query per paginazione
         long total = countGamesWithFilters(criteria);
         
         return new PageImpl<>(games, pageable, total);
     }
     
     private List<Predicate> buildPredicates(
-            CriteriaBuilder cb,
-            Root<Game> root,
-            GameSearchCriteria criteria,
-            Join<Game, Developer> developerJoin,
-            Join<Game, Publisher> publisherJoin,
-            Join<Game, Genre> genreJoin,
-            Join<Game, Platform> platformJoin) {
+            CriteriaBuilder cb, Root<Game> root, 
+            GameSearchCriteria criteria, Join<Game, Developer> developerJoin) {
         
         List<Predicate> predicates = new ArrayList<>();
         
-        // Filtro base: solo giochi attivi
-        predicates.add(cb.isTrue(root.get("active")));
-        
-        // Filtro per titolo (case-insensitive, partial match)
+        // Filtri dinamici
         if (StringUtils.hasText(criteria.getTitle())) {
             predicates.add(cb.like(
                 cb.lower(root.get("title")),
@@ -139,46 +78,12 @@ public class GameRepositoryCustomImpl implements GameRepositoryCustom {
             ));
         }
         
-        // Filtro per descrizione
-        if (StringUtils.hasText(criteria.getDescription())) {
-            predicates.add(cb.like(
-                cb.lower(root.get("description")),
-                "%" + criteria.getDescription().toLowerCase() + "%"
-            ));
-        }
-        
-        // Filtro per sviluppatore
         if (criteria.getDeveloperId() != null) {
             predicates.add(cb.equal(
                 developerJoin.get("id"), criteria.getDeveloperId()
             ));
         }
         
-        if (StringUtils.hasText(criteria.getDeveloperName())) {
-            predicates.add(cb.like(
-                cb.lower(developerJoin.get("name")),
-                "%" + criteria.getDeveloperName().toLowerCase() + "%"
-            ));
-        }
-        
-        // Filtro per publisher
-        if (criteria.getPublisherId() != null) {
-            predicates.add(cb.equal(
-                publisherJoin.get("id"), criteria.getPublisherId()
-            ));
-        }
-        
-        // Filtro per generi (OR tra i generi selezionati)
-        if (criteria.getGenreIds() != null && !criteria.getGenreIds().isEmpty()) {
-            predicates.add(genreJoin.get("id").in(criteria.getGenreIds()));
-        }
-        
-        // Filtro per piattaforme
-        if (criteria.getPlatformIds() != null && !criteria.getPlatformIds().isEmpty()) {
-            predicates.add(platformJoin.get("id").in(criteria.getPlatformIds()));
-        }
-        
-        // Filtro per range di prezzo
         if (criteria.getMinPrice() != null) {
             predicates.add(cb.greaterThanOrEqualTo(
                 root.get("price"), criteria.getMinPrice()
@@ -188,450 +93,74 @@ public class GameRepositoryCustomImpl implements GameRepositoryCustom {
         if (criteria.getMaxPrice() != null) {
             predicates.add(cb.lessThanOrEqualTo(
                 root.get("price"), criteria.getMaxPrice()
-            ));
-        }
-        
-        // Filtro per data di rilascio
-        if (criteria.getReleaseDateFrom() != null) {
-            predicates.add(cb.greaterThanOrEqualTo(
-                root.get("releaseDate"), criteria.getReleaseDateFrom()
-            ));
-        }
-        
-        if (criteria.getReleaseDateTo() != null) {
-            predicates.add(cb.lessThanOrEqualTo(
-                root.get("releaseDate"), criteria.getReleaseDateTo()
-            ));
-        }
-        
-        // Filtro per rating ESRB
-        if (criteria.getEsrbRating() != null) {
-            predicates.add(cb.equal(
-                root.get("esrbRating"), criteria.getEsrbRating()
-            ));
-        }
-        
-        // Filtro per rating utenti
-        if (criteria.getMinUserRating() != null) {
-            predicates.add(cb.greaterThanOrEqualTo(
-                root.get("userRating"), criteria.getMinUserRating()
-            ));
-        }
-        
-        // Filtro per disponibilità
-        if (criteria.getAvailable() != null && criteria.getAvailable()) {
-            predicates.add(cb.isTrue(root.get("available")));
-        }
-        
-        // Filtro per giochi in offerta
-        if (criteria.getOnSale() != null && criteria.getOnSale()) {
-            predicates.add(cb.isNotNull(root.get("salePrice")));
-            predicates.add(cb.lessThan(
-                root.get("salePrice"), root.get("price")
             ));
         }
         
         return predicates;
     }
-    
-    private List<Order> buildOrders(CriteriaBuilder cb, Root<Game> root, Sort sort) {
-        List<Order> orders = new ArrayList<>();
-        
-        if (sort.isSorted()) {
-            for (Sort.Order sortOrder : sort) {
-                String property = sortOrder.getProperty();
-                
-                // Validazione delle proprietà ordinabili
-                if (!isValidSortProperty(property)) {
-                    continue;
-                }
-                
-                Path<?> path = getPathForProperty(root, property);
-                
-                Order order = sortOrder.isAscending()
-                    ? cb.asc(path)
-                    : cb.desc(path);
-                
-                orders.add(order);
-            }
-        } else {
-            // Ordinamento di default
-            orders.add(cb.desc(root.get("releaseDate")));
-            orders.add(cb.asc(root.get("title")));
-        }
-        
-        return orders;
-    }
-    
-    private Path<?> getPathForProperty(Root<Game> root, String property) {
-        switch (property) {
-            case "developerName":
-                return root.join("developer").get("name");
-            case "publisherName":
-                return root.join("publisher").get("name");
-            case "effectivePrice":
-                // Ordinamento per prezzo effettivo (considerando sconti)
-                return cb.coalesce(root.get("salePrice"), root.get("price"));
-            default:
-                return root.get(property);
-        }
-    }
-    
-    private boolean isValidSortProperty(String property) {
-        Set<String> validProperties = Set.of(
-            "title", "price", "releaseDate", "userRating", 
-            "createdAt", "updatedAt", "developerName", 
-            "publisherName", "effectivePrice"
-        );
-        return validProperties.contains(property);
-    }
-    
-    private boolean needsDeveloperJoin(GameSearchCriteria criteria) {
-        return criteria.getDeveloperId() != null || 
-               StringUtils.hasText(criteria.getDeveloperName());
-    }
-    
-    private boolean needsPublisherJoin(GameSearchCriteria criteria) {
-        return criteria.getPublisherId() != null;
-    }
-    
-    private boolean needsGenreJoin(GameSearchCriteria criteria) {
-        return criteria.getGenreIds() != null && !criteria.getGenreIds().isEmpty();
-    }
-    
-    private boolean needsPlatformJoin(GameSearchCriteria criteria) {
-        return criteria.getPlatformIds() != null && !criteria.getPlatformIds().isEmpty();
-    }
-    
-    private long countGamesWithFilters(GameSearchCriteria criteria) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
-        Root<Game> root = countQuery.from(Game.class);
-        
-        // Stessi join della query principale
-        Join<Game, Developer> developerJoin = null;
-        Join<Game, Publisher> publisherJoin = null;
-        Join<Game, Genre> genreJoin = null;
-        Join<Game, Platform> platformJoin = null;
-        
-        if (needsDeveloperJoin(criteria)) {
-            developerJoin = root.join("developer", JoinType.INNER);
-        }
-        
-        if (needsPublisherJoin(criteria)) {
-            publisherJoin = root.join("publisher", JoinType.INNER);
-        }
-        
-        if (needsGenreJoin(criteria)) {
-            genreJoin = root.join("genres", JoinType.INNER);
-        }
-        
-        if (needsPlatformJoin(criteria)) {
-            platformJoin = root.join("platforms", JoinType.INNER);
-        }
-        
-        // Stessi predicati della query principale
-        List<Predicate> predicates = buildPredicates(
-            cb, root, criteria, developerJoin, publisherJoin, genreJoin, platformJoin
-        );
-        
-        countQuery.select(cb.count(root));
-        
-        if (!predicates.isEmpty()) {
-            countQuery.where(predicates.toArray(new Predicate[0]));
-        }
-        
-        return entityManager.createQuery(countQuery).getSingleResult();
-    }
 }
 ```
+## Criteri di Ricerca
 
-### 4.1.4 Criteria di Ricerca Avanzata
-
-#### DTO per Criteri Complessi
+**DTO per Filtri Dinamici:**
 ```java
 @Data
 @Builder
 public class GameSearchCriteria {
-    
     // Filtri di testo
     private String title;
-    private String description;
     private String developerName;
-    
-    // Filtri per ID
-    private Long developerId;
-    private Long publisherId;
-    private List<Long> genreIds;
-    private List<Long> platformIds;
     
     // Filtri numerici
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
-    private Double minUserRating;
-    private Double maxUserRating;
     
     // Filtri per date
     private LocalDate releaseDateFrom;
     private LocalDate releaseDateTo;
-    private Integer releaseYear;
-    
-    // Filtri enum
-    private EsrbRating esrbRating;
-    private List<EsrbRating> esrbRatings;
     
     // Filtri booleani
     private Boolean available;
     private Boolean onSale;
-    private Boolean newRelease; // Ultimi 6 mesi
-    private Boolean hasDemo;
-    private Boolean hasMultiplayer;
+}
+```
+
+## Paginazione
+
+**Implementazione con Spring Data:**
+```java
+@RestController
+public class GameController {
     
-    // Filtri per utente (se autenticato)
-    private Boolean inWishlist;
-    private Boolean owned;
-    private Boolean notOwned;
-    
-    // Filtri avanzati
-    private String searchText; // Ricerca full-text
-    private List<String> tags;
-    private String language;
-    
-    // Ordinamento
-    private String sortBy;
-    private String sortDirection;
-    
-    // Metodi di utilità
-    public boolean hasTextFilters() {
-        return StringUtils.hasText(title) || 
-               StringUtils.hasText(description) || 
-               StringUtils.hasText(developerName) ||
-               StringUtils.hasText(searchText);
-    }
-    
-    public boolean hasPriceFilters() {
-        return minPrice != null || maxPrice != null;
-    }
-    
-    public boolean hasDateFilters() {
-        return releaseDateFrom != null || 
-               releaseDateTo != null || 
-               releaseYear != null;
-    }
-    
-    public boolean hasUserFilters() {
-        return inWishlist != null || 
-               owned != null || 
-               notOwned != null;
+    @GetMapping("/games")
+    public Page<GameDTO> searchGames(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "releaseDate,desc") String sort,
+            GameSearchCriteria criteria) {
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
+        return gameService.findGamesWithFilters(criteria, pageable);
     }
 }
 ```
 
-#### Query Builder Pattern
-```java
-@Component
-public class GameQueryBuilder {
-    
-    private final EntityManager entityManager;
-    
-    public GameQueryBuilder(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
-    
-    public QueryResult<Game> buildQuery(GameSearchCriteria criteria, Pageable pageable) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Game> query = cb.createQuery(Game.class);
-        Root<Game> root = query.from(Game.class);
-        
-        QueryContext context = new QueryContext(cb, query, root);
-        
-        // Applicazione filtri modulari
-        applyTextFilters(context, criteria);
-        applyNumericFilters(context, criteria);
-        applyDateFilters(context, criteria);
-        applyEnumFilters(context, criteria);
-        applyBooleanFilters(context, criteria);
-        applyUserFilters(context, criteria);
-        applyAdvancedFilters(context, criteria);
-        
-        // Applicazione ordinamento
-        applySorting(context, pageable.getSort());
-        
-        // Finalizzazione query
-        if (!context.getPredicates().isEmpty()) {
-            query.where(context.getPredicates().toArray(new Predicate[0]));
-        }
-        
-        return new QueryResult<>(query, context.getCountQuery());
-    }
-    
-    private void applyTextFilters(QueryContext context, GameSearchCriteria criteria) {
-        CriteriaBuilder cb = context.getCriteriaBuilder();
-        Root<Game> root = context.getRoot();
-        
-        if (StringUtils.hasText(criteria.getTitle())) {
-            context.addPredicate(cb.like(
-                cb.lower(root.get("title")),
-                "%" + criteria.getTitle().toLowerCase() + "%"
-            ));
-        }
-        
-        if (StringUtils.hasText(criteria.getDescription())) {
-            context.addPredicate(cb.like(
-                cb.lower(root.get("description")),
-                "%" + criteria.getDescription().toLowerCase() + "%"
-            ));
-        }
-        
-        if (StringUtils.hasText(criteria.getSearchText())) {
-            // Ricerca full-text su più campi
-            String searchPattern = "%" + criteria.getSearchText().toLowerCase() + "%";
-            
-            Predicate titleMatch = cb.like(
-                cb.lower(root.get("title")), searchPattern
-            );
-            Predicate descMatch = cb.like(
-                cb.lower(root.get("description")), searchPattern
-            );
-            
-            // Join con developer per cercare anche nel nome
-            Join<Game, Developer> devJoin = context.getOrCreateDeveloperJoin();
-            Predicate devMatch = cb.like(
-                cb.lower(devJoin.get("name")), searchPattern
-            );
-            
-            context.addPredicate(cb.or(titleMatch, descMatch, devMatch));
-        }
-    }
-    
-    private void applyNumericFilters(QueryContext context, GameSearchCriteria criteria) {
-        CriteriaBuilder cb = context.getCriteriaBuilder();
-        Root<Game> root = context.getRoot();
-        
-        if (criteria.getMinPrice() != null) {
-            context.addPredicate(cb.greaterThanOrEqualTo(
-                root.get("price"), criteria.getMinPrice()
-            ));
-        }
-        
-        if (criteria.getMaxPrice() != null) {
-            context.addPredicate(cb.lessThanOrEqualTo(
-                root.get("price"), criteria.getMaxPrice()
-            ));
-        }
-        
-        if (criteria.getMinUserRating() != null) {
-            context.addPredicate(cb.greaterThanOrEqualTo(
-                root.get("userRating"), criteria.getMinUserRating()
-            ));
-        }
-        
-        if (criteria.getMaxUserRating() != null) {
-            context.addPredicate(cb.lessThanOrEqualTo(
-                root.get("userRating"), criteria.getMaxUserRating()
-            ));
-        }
-    }
-    
-    private void applyDateFilters(QueryContext context, GameSearchCriteria criteria) {
-        CriteriaBuilder cb = context.getCriteriaBuilder();
-        Root<Game> root = context.getRoot();
-        
-        if (criteria.getReleaseDateFrom() != null) {
-            context.addPredicate(cb.greaterThanOrEqualTo(
-                root.get("releaseDate"), criteria.getReleaseDateFrom()
-            ));
-        }
-        
-        if (criteria.getReleaseDateTo() != null) {
-            context.addPredicate(cb.lessThanOrEqualTo(
-                root.get("releaseDate"), criteria.getReleaseDateTo()
-            ));
-        }
-        
-        if (criteria.getReleaseYear() != null) {
-            LocalDate yearStart = LocalDate.of(criteria.getReleaseYear(), 1, 1);
-            LocalDate yearEnd = LocalDate.of(criteria.getReleaseYear(), 12, 31);
-            
-            context.addPredicate(cb.between(
-                root.get("releaseDate"), yearStart, yearEnd
-            ));
-        }
-        
-        if (criteria.getNewRelease() != null && criteria.getNewRelease()) {
-            LocalDate sixMonthsAgo = LocalDate.now().minusMonths(6);
-            context.addPredicate(cb.greaterThanOrEqualTo(
-                root.get("releaseDate"), sixMonthsAgo
-            ));
-        }
-    }
-    
-    private void applyUserFilters(QueryContext context, GameSearchCriteria criteria) {
-        if (!criteria.hasUserFilters()) {
-            return;
-        }
-        
-        CriteriaBuilder cb = context.getCriteriaBuilder();
-        Root<Game> root = context.getRoot();
-        
-        // Subquery per verificare se il gioco è nella wishlist dell'utente
-        if (criteria.getInWishlist() != null) {
-            Subquery<Long> wishlistSubquery = context.getQuery().subquery(Long.class);
-            Root<UserGameList> ugl = wishlistSubquery.from(UserGameList.class);
-            
-            wishlistSubquery.select(ugl.get("game").get("id"))
-                .where(
-                    cb.equal(ugl.get("user").get("id"), getCurrentUserId()),
-                    cb.equal(ugl.get("listType"), ListType.WISHLIST)
-                );
-            
-            if (criteria.getInWishlist()) {
-                context.addPredicate(cb.in(root.get("id")).value(wishlistSubquery));
-            } else {
-                context.addPredicate(cb.not(cb.in(root.get("id")).value(wishlistSubquery)));
-            }
-        }
-        
-        // Subquery per giochi posseduti
-        if (criteria.getOwned() != null) {
-            Subquery<Long> ownedSubquery = context.getQuery().subquery(Long.class);
-            Root<UserGameList> ugl = ownedSubquery.from(UserGameList.class);
-            
-            ownedSubquery.select(ugl.get("game").get("id"))
-                .where(
-                    cb.equal(ugl.get("user").get("id"), getCurrentUserId()),
-                    cb.equal(ugl.get("listType"), ListType.OWNED)
-                );
-            
-            if (criteria.getOwned()) {
-                context.addPredicate(cb.in(root.get("id")).value(ownedSubquery));
-            } else {
-                context.addPredicate(cb.not(cb.in(root.get("id")).value(ownedSubquery)));
-            }
-        }
-    }
-    
-    private Long getCurrentUserId() {
-        // Ottieni l'ID dell'utente corrente dal SecurityContext
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof UserPrincipal) {
-            return ((UserPrincipal) auth.getPrincipal()).getId();
-        }
-        return null;
-    }
-}
+## Vantaggi delle Query Dinamiche
 
-// Classe di supporto per il contesto della query
-public class QueryContext {
-    private final CriteriaBuilder criteriaBuilder;
-    private final CriteriaQuery<Game> query;
-    private final Root<Game> root;
-    private final List<Predicate> predicates = new ArrayList<>();
-    
-    private Join<Game, Developer> developerJoin;
-    private Join<Game, Publisher> publisherJoin;
-    private Join<Game, Genre> genreJoin;
-    private Join<Game, Platform> platformJoin;
+- **Flessibilità**: Costruzione runtime delle query
+- **Performance**: Solo i join necessari
+- **Manutenibilità**: Logica centralizzata
+- **Scalabilità**: Gestione efficiente di filtri complessi
+- **Type Safety**: Controllo a compile-time con Criteria API
+
+## Best Practices
+
+- Validazione dei parametri di ordinamento
+- Limitazione del numero massimo di risultati
+- Caching delle query frequenti
+- Indicizzazione appropriata del database
+- Gestione degli errori e timeout
+Le query dinamiche e la paginazione rappresentano strumenti fondamentali per costruire API flessibili e performanti, permettendo agli utenti di filtrare e navigare grandi dataset in modo efficiente attraverso l'uso strategico di Criteria API e Spring Data.
     
     // Costruttore e metodi getter/setter
     

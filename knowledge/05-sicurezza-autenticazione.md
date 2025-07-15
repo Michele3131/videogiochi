@@ -1,128 +1,43 @@
-# 5. Sicurezza e Autenticazione
+# Sicurezza e Autenticazione
 
-## 5.1 Concetti Fondamentali di Sicurezza
+## Concetti Fondamentali
 
-### 5.1.1 Autenticazione vs Autorizzazione
+**Autenticazione vs Autorizzazione:**
+- **Autenticazione**: "Chi sei?" - Verifica dell'identità
+- **Autorizzazione**: "Cosa puoi fare?" - Controllo dei permessi
 
-**Autenticazione** (Authentication): Processo di verifica dell'identità di un utente.
-- "Chi sei?"
-- Verifica credenziali (username/password, token, certificati)
-- Stabilisce l'identità dell'utente
+**Principi CIA:**
+- **Confidentiality**: Accesso solo agli autorizzati
+- **Integrity**: Dati accurati e non modificati
+- **Availability**: Sistemi accessibili quando necessario
 
-**Autorizzazione** (Authorization): Processo di verifica dei permessi di un utente autenticato.
-- "Cosa puoi fare?"
-- Controllo accessi basato su ruoli/permessi
-- Determina le azioni consentite
+## Spring Security
 
-### 5.1.2 Principi di Sicurezza
-
-#### CIA Triad
-1. **Confidentiality (Riservatezza)**: I dati devono essere accessibili solo agli utenti autorizzati
-2. **Integrity (Integrità)**: I dati devono rimanere accurati e non modificati da utenti non autorizzati
-3. **Availability (Disponibilità)**: I sistemi devono essere accessibili quando necessario
-
-#### Defense in Depth
-```java
-// Esempio di sicurezza a livelli multipli
-@RestController
-@RequestMapping("/api/v1/admin")
-@PreAuthorize("hasRole('ADMIN')") // Livello 1: Autorizzazione a livello controller
-public class AdminController {
-    
-    @PostMapping("/users/{userId}/deactivate")
-    @PreAuthorize("hasAuthority('USER_MANAGEMENT')") // Livello 2: Autorizzazione specifica
-    public ResponseEntity<ApiResponse> deactivateUser(
-            @PathVariable Long userId,
-            @Valid @RequestBody DeactivationRequest request,
-            Authentication authentication) {
-        
-        // Livello 3: Validazione business logic
-        if (!userService.canDeactivateUser(userId, getCurrentUserId(authentication))) {
-            throw new SecurityException("Non autorizzato a disattivare questo utente");
-        }
-        
-        // Livello 4: Audit logging
-        auditService.logUserDeactivation(userId, getCurrentUserId(authentication));
-        
-        userService.deactivateUser(userId, request.getReason());
-        return ResponseEntity.ok(ApiResponse.success("Utente disattivato con successo"));
-    }
-}
-```
-
-## 5.2 Spring Security
-
-### 5.2.1 Architettura di Spring Security
-
-#### Security Filter Chain
+**Configurazione Base:**
 ```java
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
     
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
-    private final JwtTokenProvider jwtTokenProvider;
-    
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12); // Strength 12 per sicurezza elevata
-    }
-    
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+        return new BCryptPasswordEncoder(12);
     }
     
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Disabilita CSRF per API REST
             .csrf(csrf -> csrf.disable())
-            
-            // Configurazione CORS
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            
-            // Gestione sessioni stateless
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            
-            // Gestione eccezioni
-            .exceptionHandling(exceptions -> exceptions
-                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                .accessDeniedHandler(jwtAccessDeniedHandler)
-            )
-            
-            // Configurazione autorizzazioni
             .authorizeHttpRequests(authz -> authz
-                // Endpoint pubblici
                 .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/api/v1/games/search").permitAll()
-                .requestMatchers("/api/v1/games/{id}").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/games").permitAll()
-                
-                // Endpoint per utenti autenticati
-                .requestMatchers("/api/v1/users/profile").hasRole("USER")
-                .requestMatchers("/api/v1/users/lists/**").hasRole("USER")
-                .requestMatchers("/api/v1/games/*/rate").hasRole("USER")
-                
-                // Endpoint amministrativi
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/v1/games").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/games/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/games/**").hasRole("ADMIN")
-                
-                // Endpoint per moderatori
-                .requestMatchers("/api/v1/moderation/**").hasAnyRole("MODERATOR", "ADMIN")
-                
-                // Tutti gli altri endpoint richiedono autenticazione
+                .requestMatchers("/api/v1/users/**").hasRole("USER")
                 .anyRequest().authenticated()
             )
-            
-            // Aggiunta filtro JWT
             .addFilterBefore(
                 new JwtAuthenticationFilter(jwtTokenProvider),
                 UsernamePasswordAuthenticationFilter.class
@@ -130,63 +45,21 @@ public class SecurityConfig {
         
         return http.build();
     }
-    
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Origini consentite (configurabile via properties)
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-            "http://localhost:3000", // Frontend development
-            "http://localhost:5173", // Vite dev server
-            "https://videogames-app.com" // Production
-        ));
-        
-        configuration.setAllowedMethods(Arrays.asList(
-            "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
-        ));
-        
-        configuration.setAllowedHeaders(Arrays.asList(
-            "Authorization", "Content-Type", "X-Requested-With",
-            "Accept", "Origin", "Access-Control-Request-Method",
-            "Access-Control-Request-Headers"
-        ));
-        
-        configuration.setExposedHeaders(Arrays.asList(
-            "Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"
-        ));
-        
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L); // Cache preflight per 1 ora
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        
-        return source;
-    }
 }
 ```
 
-### 5.2.2 Custom UserDetailsService
-
-#### Implementazione UserDetails
+**UserDetails Personalizzato:**
 ```java
 @Data
 @Builder
 public class UserPrincipal implements UserDetails {
-    
     private Long id;
     private String username;
     private String email;
     private String password;
     private Set<UserRole> roles;
     private boolean enabled;
-    private boolean accountNonExpired;
-    private boolean accountNonLocked;
-    private boolean credentialsNonExpired;
-    private LocalDateTime lastLoginAt;
     
-    // Conversione da Entity
     public static UserPrincipal from(User user) {
         return UserPrincipal.builder()
             .id(user.getId())
@@ -195,239 +68,184 @@ public class UserPrincipal implements UserDetails {
             .password(user.getPassword())
             .roles(user.getRoles())
             .enabled(user.isActive())
-            .accountNonExpired(!user.isExpired())
-            .accountNonLocked(!user.isLocked())
-            .credentialsNonExpired(!user.isPasswordExpired())
-            .lastLoginAt(user.getLastLoginAt())
             .build();
     }
     
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        Set<GrantedAuthority> authorities = new HashSet<>();
-        
-        // Aggiunta ruoli
-        for (UserRole role : roles) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
-            
-            // Aggiunta permessi specifici basati sui ruoli
-            authorities.addAll(getPermissionsForRole(role));
-        }
-        
-        return authorities;
-    }
-    
-    private Set<GrantedAuthority> getPermissionsForRole(UserRole role) {
-        Set<GrantedAuthority> permissions = new HashSet<>();
-        
-        switch (role) {
-            case ADMIN:
-                permissions.add(new SimpleGrantedAuthority("USER_MANAGEMENT"));
-                permissions.add(new SimpleGrantedAuthority("GAME_MANAGEMENT"));
-                permissions.add(new SimpleGrantedAuthority("SYSTEM_CONFIGURATION"));
-                permissions.add(new SimpleGrantedAuthority("AUDIT_ACCESS"));
-                // Fall through per includere permessi di livello inferiore
-                
-            case MODERATOR:
-                permissions.add(new SimpleGrantedAuthority("CONTENT_MODERATION"));
-                permissions.add(new SimpleGrantedAuthority("USER_SUSPENSION"));
-                // Fall through
-                
-            case USER:
-                permissions.add(new SimpleGrantedAuthority("PROFILE_MANAGEMENT"));
-                permissions.add(new SimpleGrantedAuthority("LIST_MANAGEMENT"));
-                permissions.add(new SimpleGrantedAuthority("RATING_SUBMISSION"));
-                break;
-                
-            default:
-                // Nessun permesso per ruoli non riconosciuti
-                break;
-        }
-        
-        return permissions;
-    }
-    
-    @Override
-    public boolean isAccountNonExpired() {
-        return accountNonExpired;
-    }
-    
-    @Override
-    public boolean isAccountNonLocked() {
-        return accountNonLocked;
-    }
-    
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return credentialsNonExpired;
-    }
-    
-    @Override
-    public boolean isEnabled() {
-        return enabled;
+        return roles.stream()
+            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+            .collect(Collectors.toSet());
     }
 }
 ```
 
-#### UserDetailsService Implementation
-```java
-@Service
-@Transactional(readOnly = true)
-public class CustomUserDetailsService implements UserDetailsService {
-    
-    private final UserRepository userRepository;
-    private final LoginAttemptService loginAttemptService;
-    
-    public CustomUserDetailsService(
-            UserRepository userRepository,
-            LoginAttemptService loginAttemptService) {
-        this.userRepository = userRepository;
-        this.loginAttemptService = loginAttemptService;
-    }
-    
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Controllo tentativi di login
-        if (loginAttemptService.isBlocked(username)) {
-            throw new AccountLockedException(
-                "Account temporaneamente bloccato per troppi tentativi di login falliti"
-            );
-        }
-        
-        // Ricerca utente per username o email
-        User user = userRepository.findByUsernameOrEmail(username, username)
-            .orElseThrow(() -> new UsernameNotFoundException(
-                "Utente non trovato: " + username
-            ));
-        
-        // Controlli aggiuntivi
-        validateUserAccount(user);
-        
-        return UserPrincipal.from(user);
-    }
-    
-    private void validateUserAccount(User user) {
-        if (!user.isActive()) {
-            throw new DisabledException("Account disattivato");
-        }
-        
-        if (user.isLocked()) {
-            throw new AccountLockedException("Account bloccato");
-        }
-        
-        if (user.isExpired()) {
-            throw new AccountExpiredException("Account scaduto");
-        }
-        
-        if (user.isPasswordExpired()) {
-            throw new CredentialsExpiredException("Password scaduta");
-        }
-        
-        if (!user.isEmailVerified()) {
-            throw new EmailNotVerifiedException("Email non verificata");
-        }
-    }
-}
-```
+## JWT (JSON Web Token)
 
-## 5.3 JWT (JSON Web Tokens)
+**Struttura JWT:**
+- **Header**: Algoritmo e tipo di token
+- **Payload**: Claims (dati utente)
+- **Signature**: Verifica integrità
 
-### 5.3.1 Struttura e Implementazione JWT
-
-#### JWT Token Provider
+**Implementazione JWT Provider:**
 ```java
 @Component
 public class JwtTokenProvider {
     
-    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
-    
     @Value("${app.jwt.secret}")
     private String jwtSecret;
     
-    @Value("${app.jwt.access-token-expiration:900000}") // 15 minuti
-    private long accessTokenExpiration;
+    @Value("${app.jwt.expiration}")
+    private int jwtExpirationInMs;
     
-    @Value("${app.jwt.refresh-token-expiration:604800000}") // 7 giorni
-    private long refreshTokenExpiration;
-    
-    @Value("${app.jwt.issuer:videogames-app}")
-    private String issuer;
-    
-    private Key getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-    
-    public String generateAccessToken(UserPrincipal userPrincipal) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + accessTokenExpiration);
+    public String generateToken(UserPrincipal userPrincipal) {
+        Date expiryDate = new Date(System.currentTimeMillis() + jwtExpirationInMs);
         
         return Jwts.builder()
             .setSubject(userPrincipal.getId().toString())
-            .setIssuer(issuer)
-            .setIssuedAt(now)
-            .setExpiration(expiryDate)
             .claim("username", userPrincipal.getUsername())
-            .claim("email", userPrincipal.getEmail())
-            .claim("roles", userPrincipal.getRoles().stream()
-                .map(Enum::name)
-                .collect(Collectors.toList()))
-            .claim("type", "access")
-            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
-            .compact();
-    }
-    
-    public String generateRefreshToken(UserPrincipal userPrincipal) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + refreshTokenExpiration);
-        
-        return Jwts.builder()
-            .setSubject(userPrincipal.getId().toString())
-            .setIssuer(issuer)
-            .setIssuedAt(now)
+            .claim("roles", userPrincipal.getRoles())
+            .setIssuedAt(new Date())
             .setExpiration(expiryDate)
-            .claim("username", userPrincipal.getUsername())
-            .claim("type", "refresh")
-            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+            .signWith(SignatureAlgorithm.HS512, jwtSecret)
             .compact();
     }
     
-    public String generateEmailVerificationToken(Long userId, String email) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + 86400000); // 24 ore
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+}
+```
+
+## Autenticazione
+
+**Controller di Autenticazione:**
+```java
+@RestController
+@RequestMapping("/api/v1/auth")
+public class AuthController {
+    
+    @PostMapping("/login")
+    public ResponseEntity<JwtAuthenticationResponse> login(
+            @Valid @RequestBody LoginRequest request) {
         
-        return Jwts.builder()
-            .setSubject(userId.toString())
-            .setIssuer(issuer)
-            .setIssuedAt(now)
-            .setExpiration(expiryDate)
-            .claim("email", email)
-            .claim("type", "email_verification")
-            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
-            .compact();
-    }
-    
-    public String generatePasswordResetToken(Long userId, String email) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + 3600000); // 1 ora
+        Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(
+                request.getUsername(),
+                request.getPassword()
+            )
+        );
         
-        return Jwts.builder()
-            .setSubject(userId.toString())
-            .setIssuer(issuer)
-            .setIssuedAt(now)
-            .setExpiration(expiryDate)
-            .claim("email", email)
-            .claim("type", "password_reset")
-            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
-            .compact();
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        String jwt = jwtTokenProvider.generateToken(userPrincipal);
+        
+        return ResponseEntity.ok(new JwtAuthenticationResponse(jwt));
     }
     
-    public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-            .setSigningKey(getSigningKey())
-            .build()
-            .parseClaimsJws(token)
-            .getBody();
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse> register(
+            @Valid @RequestBody RegisterRequest request) {
+        
+        if (userRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, "Username già in uso"));
+        }
+        
+        User user = new User(
+            request.getUsername(),
+            request.getEmail(),
+            passwordEncoder.encode(request.getPassword())
+        );
+        
+        userRepository.save(user);
+        
+        return ResponseEntity.ok(new ApiResponse(true, "Utente registrato con successo"));
+    }
+}
+## Autorizzazione
+
+**Controllo Accessi Basato su Ruoli:**
+```java
+@RestController
+@RequestMapping("/api/v1/games")
+public class GameController {
+    
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping
+    public ResponseEntity<GameDTO> createGame(@Valid @RequestBody CreateGameRequest request) {
+        // Solo amministratori possono creare giochi
+        return ResponseEntity.ok(gameService.createGame(request));
+    }
+    
+    @PreAuthorize("hasRole('USER')")
+    @PostMapping("/{gameId}/rate")
+    public ResponseEntity<ApiResponse> rateGame(
+            @PathVariable Long gameId,
+            @Valid @RequestBody RatingRequest request,
+            Authentication authentication) {
+        
+        Long userId = getCurrentUserId(authentication);
+        gameService.rateGame(gameId, userId, request.getRating());
+        return ResponseEntity.ok(new ApiResponse(true, "Valutazione salvata"));
+    }
+}
+```
+
+**Filtro JWT:**
+```java
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    
+    private final JwtTokenProvider jwtTokenProvider;
+    private final CustomUserDetailsService userDetailsService;
+    
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain) throws ServletException, IOException {
+        
+        String token = getTokenFromRequest(request);
+        
+        if (token != null && jwtTokenProvider.validateToken(token)) {
+            Long userId = jwtTokenProvider.getUserIdFromToken(token);
+            UserDetails userDetails = userDetailsService.loadUserById(userId);
+            
+            UsernamePasswordAuthenticationToken authentication = 
+                new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+        
+        filterChain.doFilter(request, response);
+    }
+    
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+}
+```
+
+## Best Practices di Sicurezza
+
+- **Password Hashing**: Utilizzare BCrypt con salt appropriato
+- **Token Expiration**: Impostare scadenze brevi per i token di accesso
+- **HTTPS**: Sempre utilizzare connessioni sicure in produzione
+- **Input Validation**: Validare tutti gli input utente
+- **Rate Limiting**: Limitare tentativi di login e richieste API
+- **Audit Logging**: Registrare eventi di sicurezza importanti
+- **Principle of Least Privilege**: Concedere solo i permessi minimi necessari
+
+La sicurezza rappresenta un aspetto critico delle applicazioni moderne, richiedendo un approccio stratificato che combina autenticazione robusta, autorizzazione granulare e best practices di sviluppo sicuro.
         
         return Long.parseLong(claims.getSubject());
     }

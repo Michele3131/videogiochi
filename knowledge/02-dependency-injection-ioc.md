@@ -1,824 +1,310 @@
 # 2. Dependency Injection e Inversion of Control
 
-## 2.1 La Rivoluzione Concettuale dell'Inversion of Control
+## 2.1 Inversion of Control (IoC): La Rivoluzione Concettuale
 
-### 2.1.1 Genesi di un Paradigma
+### 2.1.1 Il Problema delle Dipendenze Hard-Coded
 
-**Inversion of Control (IoC)** rappresenta una delle più profonde rivoluzioni concettuali nella progettazione software. Non è semplicemente una tecnica, ma un **cambio di paradigma** che ridefinisce il rapporto tra oggetti e le loro dipendenze.
-
-Nella programmazione tradizionale, ogni oggetto è un "dittatore" che controlla completamente la creazione e gestione delle sue dipendenze. IoC inverte questa dinamica: gli oggetti diventano "cittadini" di un ecosistema più ampio, dove un'autorità esterna (il container IoC) gestisce le relazioni e le dipendenze.
-
-Questa inversione non è solo tecnica, ma **filosofica**: sposta il focus dal "come creare" al "cosa fare", permettendo agli oggetti di concentrarsi sulla loro responsabilità principale senza preoccuparsi della gestione delle dipendenze.
-
-### 2.1.2 L'Anatomia del Problema: Dipendenze Hard-Coded
-
-Per comprendere il valore di IoC, dobbiamo prima analizzare i problemi intrinseci della gestione tradizionale delle dipendenze.
+Nel paradigma tradizionale, gli oggetti creano e gestiscono le proprie dipendenze, causando **accoppiamento forte** e difficoltà di testing.
 
 ```java
-// Esempio di accoppiamento forte - anti-pattern
 public class GameService {
-    private final GameRepository repository;
-    private final NotificationService notifier;
-    
     public GameService() {
-        // Ogni dipendenza è hard-coded - problematico!
-        this.repository = new DatabaseGameRepository();
-        this.notifier = new EmailNotificationService();
-    }
-    
-    public void publishGame(Game game) {
-        repository.save(game);
-        notifier.notify("Game published: " + game.getTitle());
+        // Dipendenze hard-coded - accoppiamento forte
+        this.gameRepository = new MySQLGameRepository();
+        this.emailService = new SMTPEmailService();
     }
 }
 ```
 
-**Analisi dei problemi fondamentali:**
+**Problemi:**
+- **Accoppiamento Forte**: Legato a implementazioni specifiche
+- **Difficoltà di Testing**: Impossibile testare in isolamento
+- **Rigidità**: Difficile cambiare implementazioni
+- **Responsabilità Multiple**: L'oggetto gestisce sia logica che creazione dipendenze
 
-**Accoppiamento Ontologico**: La classe non dipende da *cosa* fa un repository, ma da *come* è implementato. Questo viola il principio di astrazione e rende il codice fragile ai cambiamenti.
+### 2.1.2 La Trasformazione attraverso IoC
 
-**Rigidità Configurativa**: Ogni modifica alle dipendenze richiede modifiche al codice sorgente, rendendo impossibile la configurazione runtime o l'adattamento a contesti diversi.
+L'**Inversion of Control** inverte la responsabilità: un **container esterno** crea e inietta le dipendenze.
 
-**Testabilità Compromessa**: L'impossibilità di sostituire le dipendenze rende i test unitari estremamente difficili, forzando l'uso di test di integrazione più lenti e complessi.
-
-**Violazione della Responsabilità Singola**: La classe gestisce sia la logica di business che la costruzione delle dipendenze, mescolando responsabilità diverse.
-
-### 2.1.3 La Trasformazione attraverso IoC
-
-L'applicazione di IoC trasforma radicalmente l'architettura del codice, creando un sistema più flessibile e manutenibile.
+**Principi Fondamentali:**
+- **Inversione della Responsabilità**: Gli oggetti ricevono dipendenze dall'esterno
+- **Controllo Centralizzato**: Container IoC gestisce creazione e ciclo di vita
+- **Configurazione Esterna**: Dipendenze configurate fuori dal codice business
 
 ```java
-// Trasformazione con IoC - la classe diventa "pura"
+@Service
 public class GameService {
-    private final GameRepository repository;
-    private final NotificationService notifier;
-    private final AuditLogger auditor;
+    private final GameRepository gameRepository;
+    private final EmailService emailService;
     
-    // Le dipendenze vengono fornite dall'esterno
-    public GameService(GameRepository repository, 
-                      NotificationService notifier,
-                      AuditLogger auditor) {
-        this.repository = repository;
-        this.notifier = notifier;
-        this.auditor = auditor;
-    }
-    
-    public void publishGame(Game game) {
-        // Focus esclusivo sulla logica di business
-        repository.save(game);
-        notifier.notify("Game published: " + game.getTitle());
-        auditor.log("GAME_PUBLISHED", game.getId());
+    // Constructor Injection - dipendenze iniettate
+    public GameService(GameRepository gameRepository, EmailService emailService) {
+        this.gameRepository = gameRepository;
+        this.emailService = emailService;
     }
 }
 ```
 
-**Benefici della trasformazione:**
-
-**Purezza Funzionale**: La classe diventa "pura" nel senso che la sua logica dipende solo dagli input ricevuti, non da dettagli implementativi nascosti.
-
-**Composabilità**: Diverse implementazioni possono essere combinate per creare comportamenti diversi senza modificare il codice della classe.
-
-**Testabilità Intrinseca**: La possibilità di iniettare mock rende i test naturali e veloci, permettendo di testare la logica in isolamento.
-
-**Configurabilità Dinamica**: Il comportamento può essere modificato a runtime semplicemente cambiando le dipendenze iniettate.
+**Vantaggi:**
+- **Disaccoppiamento**: Dipendenza da astrazioni, non implementazioni
+- **Testabilità**: Possibilità di iniettare mock per test isolati
+- **Flessibilità**: Diverse implementazioni senza modifiche al codice
+- **Configurabilità**: Setup diversi per ambienti diversi
 
 ## 2.2 Dependency Injection: L'Arte della Composizione
 
-### 2.2.1 Oltre la Definizione: Una Filosofia di Composizione
+### 2.2.1 La Filosofia della Dependency Injection
 
-**Dependency Injection** non è semplicemente una tecnica di implementazione di IoC, ma una **filosofia di composizione** che trasforma il modo in cui pensiamo alla costruzione di software. Rappresenta il passaggio da un modello "costruttivo" (dove ogni oggetto costruisce le sue dipendenze) a un modello "compositivo" (dove le dipendenze vengono assemblate dall'esterno).
+La **Dependency Injection (DI)** è l'implementazione pratica dei principi IoC. È una **filosofia di composizione** che riconosce che la forza di un sistema risiede nelle **relazioni** tra componenti, non nei singoli componenti.
 
-Questa filosofia riflette un principio più profondo: **la separazione tra configurazione e utilizzo**. Gli oggetti si concentrano su *cosa* fare (utilizzo), mentre un meccanismo esterno si occupa di *come* assemblarli (configurazione).
+**Principi Fondamentali:**
+- **Composizione over Inheritance**: Comporre comportamenti invece di ereditarli
+- **Dependency Inversion**: Dipendere da astrazioni, non da implementazioni
+- **Single Responsibility**: Una sola ragione per cambiare
+- **Open/Closed**: Aperto all'estensione, chiuso alla modifica
 
-### 2.2.2 Le Modalità di Iniezione: Strategie di Composizione
+### 2.2.2 Constructor Injection: L'Eleganza della Semplicità
 
-Esistono diverse strategie per iniettare dipendenze, ognuna con implicazioni filosofiche e pratiche diverse.
-
-#### Constructor Injection: L'Immutabilità come Virtù
-
-Il **Constructor Injection** rappresenta la forma più pura di dependency injection. Riflette il principio che un oggetto dovrebbe essere **completo e immutabile** dal momento della sua creazione.
+Il **Constructor Injection** è la forma più pura di DI. Garantisce che un oggetto sia sempre in uno stato valido e completo.
 
 ```java
 @Service
-public class GameService {
-    private final GameRepository repository;
-    private final GameValidator validator;
-    private final EventPublisher eventPublisher;
+public class GameRecommendationService {
+    private final GameRepository gameRepository;
+    private final UserPreferenceService userPreferenceService;
+    private final RecommendationAlgorithm algorithm;
     
-    // Tutte le dipendenze fornite alla costruzione
-    public GameService(GameRepository repository,
-                      GameValidator validator, 
-                      EventPublisher eventPublisher) {
-        this.repository = repository;
-        this.validator = validator;
-        this.eventPublisher = eventPublisher;
+    public GameRecommendationService(
+            GameRepository gameRepository,
+            UserPreferenceService userPreferenceService,
+            RecommendationAlgorithm algorithm) {
+        this.gameRepository = gameRepository;
+        this.userPreferenceService = userPreferenceService;
+        this.algorithm = algorithm;
     }
-    
-    // L'oggetto è completo e pronto all'uso
 }
 ```
 
-**Filosofia del Constructor Injection:**
+**Vantaggi:**
+- **Immutabilità**: Dipendenze final, thread-safe
+- **Fail-Fast**: Errori immediati se mancano dipendenze
+- **Trasparenza**: Dipendenze esplicite nella signature
+- **Testabilità**: Facile creazione di istanze per test
 
-**Completezza Ontologica**: Un oggetto esiste completamente solo quando tutte le sue dipendenze essenziali sono presenti. Non può esistere in uno stato "parziale".
+### 2.2.3 Setter Injection: Flessibilità Controllata
 
-**Immutabilità Strutturale**: Una volta creato, l'oggetto non cambia la sua struttura interna, garantendo prevedibilità e thread-safety.
-
-**Fail-Fast Principle**: Gli errori di configurazione vengono rilevati immediatamente alla creazione, non durante l'esecuzione.
-
-#### Setter Injection: La Flessibilità dell'Opzionalità
-
-Il **Setter Injection** rappresenta un approccio più flessibile, adatto quando alcune dipendenze sono opzionali o quando l'oggetto può essere riconfigurato dopo la creazione.
+Il **Setter Injection** offre flessibilità per dipendenze opzionali o configurazione post-creazione.
 
 ```java
 @Service
-public class GameService {
-    private GameRepository repository;
-    private NotificationService notificationService; // Opzionale
+public class GameAnalyticsService {
+    private final GameRepository gameRepository;
+    private CacheManager cacheManager; // Opzionale
     
-    @Autowired
-    public void setRepository(GameRepository repository) {
-        this.repository = repository;
+    public GameAnalyticsService(GameRepository gameRepository) {
+        this.gameRepository = gameRepository;
     }
     
     @Autowired(required = false)
-    public void setNotificationService(NotificationService service) {
-        this.notificationService = service;
-    }
-    
-    public void publishGame(Game game) {
-        repository.save(game);
-        
-        // Comportamento adattivo basato sulla presenza della dipendenza
-        Optional.ofNullable(notificationService)
-                .ifPresent(service -> service.notify("Game published: " + game.getTitle()));
+    public void setCacheManager(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
     }
 }
 ```
 
-**Quando utilizzare Setter Injection:**
-- **Dipendenze opzionali**: Quando il servizio può funzionare anche senza certe dipendenze
-- **Riconfigurazione runtime**: Quando le dipendenze possono cambiare durante il ciclo di vita
-- **Compatibilità legacy**: Quando si deve integrare con codice esistente
+**Casi d'Uso:**
+- Dipendenze opzionali
+- Configurazione circolare (rara)
+- Riconfigurabilità runtime
+- Integrazione con sistemi legacy
 
-#### Field Injection (Sconsigliato)
+### 2.2.4 Field Injection: Convenienza vs Buone Pratiche
+
+Il **Field Injection** è conveniente ma nasconde dipendenze e complica il testing.
+
 ```java
 @Service
-public class GameService {
-    
-    @Autowired // SCONSIGLIATO!
-    private GameRepository gameRepository;
+public class GameNotificationService {
+    @Autowired
+    private GameRepository gameRepository; // Sconsigliato
     
     @Autowired
     private EmailService emailService;
-    
-    // Problemi:
-    // - Difficile testare
-    // - Dipendenze nascoste
-    // - Possibili NullPointerException
-    // - Accoppiamento con il framework
 }
 ```
 
-### 2.2.3 Spring Framework e Dependency Injection
+**Problemi:**
+- Dipendenze nascoste
+- Difficoltà di testing senza container
+- Impossibilità di usare final
+- Accoppiamento al framework
 
-#### Configurazione con Annotazioni
+### 2.2.5 Spring Framework: Configurazione Dichiarativa
+
+Spring trasforma la dependency injection in un **linguaggio dichiarativo**. Le annotazioni rendono il codice una **dichiarazione di intenti** piuttosto che istruzioni imperative.
+
 ```java
-// Configurazione dei Bean
 @Configuration
-@EnableJpaRepositories(basePackages = "com.videogames.repository")
-@ComponentScan(basePackages = "com.videogames")
-public class AppConfig {
+public class GameConfiguration {
     
     @Bean
     @Primary
-    public GameRepository gameRepository(EntityManager entityManager) {
-        return new GameRepositoryImpl(entityManager);
+    public RecommendationAlgorithm collaborativeFiltering() {
+        return new CollaborativeFilteringAlgorithm();
     }
     
     @Bean
-    @ConditionalOnProperty(name = "email.enabled", havingValue = "true")
-    public EmailService emailService() {
-        return new SmtpEmailService();
+    @ConditionalOnProperty(name = "recommendation.algorithm", havingValue = "content")
+    public RecommendationAlgorithm contentBased() {
+        return new ContentBasedAlgorithm();
     }
     
     @Bean
-    @ConditionalOnProperty(name = "email.enabled", havingValue = "false", matchIfMissing = true)
-    public EmailService mockEmailService() {
-        return new MockEmailService();
+    @Scope("prototype")
+    public GameSession gameSession() {
+        return new GameSession();
     }
     
     @Bean
-    @Scope("prototype") // Nuovo bean per ogni richiesta
-    public GameProcessor gameProcessor() {
-        return new GameProcessor();
-    }
-    
-    @Bean
-    @Lazy // Inizializzazione lazy
-    public ExpensiveService expensiveService() {
-        return new ExpensiveService();
+    @Lazy
+    public ExpensiveAnalyticsService analyticsService() {
+        return new ExpensiveAnalyticsService();
     }
 }
 ```
 
-#### Annotazioni di Stereotipo
+**Annotazioni Chiave:**
+- **@Primary**: Implementazione predefinita
+- **@ConditionalOnProperty**: Creazione condizionale
+- **@Scope**: Controllo del ciclo di vita
+- **@Lazy**: Creazione ritardata
+
+#### Stereotipi Architetturali
+
+Gli **stereotipi** sono dichiarazioni architetturali che comunicano il ruolo di ogni componente:
+
 ```java
-// Service Layer
-@Service
-@Transactional
-public class GameService {
-    // Logica di business
-}
+@Service // Logica di business
+public class GameRecommendationService { }
 
-// Repository Layer
-@Repository
-public class GameRepositoryImpl implements GameRepository {
-    // Accesso ai dati
-}
+@Repository // Accesso ai dati
+public class GameRepositoryImpl { }
 
-// Controller Layer
-@RestController
-@RequestMapping("/api/v1/games")
-public class GameController {
-    // Gestione HTTP
-}
+@RestController // Interfaccia REST
+public class GameController { }
 
-// Configuration
-@Configuration
-public class DatabaseConfig {
-    // Configurazione
-}
-
-// Component generico
-@Component
-public class GameValidator {
-    // Validazione
-}
+@Component // Componente generico
+public class GameEventListener { }
 ```
+
+**Semantica:**
+- **@Service**: Logica di business e regole di dominio
+- **@Repository**: Accesso ai dati con traduzione automatica delle eccezioni
+- **@RestController**: Gestione richieste HTTP con serializzazione automatica
+- **@Component**: Componente generico per casi non specifici
 
 #### Qualificatori per Disambiguare
-```java
-// Interfaccia comune
-public interface NotificationService {
-    void sendNotification(String message);
-}
 
-// Implementazioni multiple
+Quando esistono multiple implementazioni della stessa interfaccia, i **qualificatori** permettono di specificare quale implementazione utilizzare:
+
+```java
 @Service
 @Qualifier("email")
-public class EmailNotificationService implements NotificationService {
-    @Override
-    public void sendNotification(String message) {
-        // Invio email
-    }
-}
+public class EmailNotificationService implements NotificationService { }
 
 @Service
 @Qualifier("sms")
-public class SmsNotificationService implements NotificationService {
-    @Override
-    public void sendNotification(String message) {
-        // Invio SMS
-    }
-}
+public class SmsNotificationService implements NotificationService { }
 
-// Utilizzo con qualificatori
 @Service
 public class GameService {
-    private final NotificationService emailService;
-    private final NotificationService smsService;
-    
     public GameService(@Qualifier("email") NotificationService emailService,
                       @Qualifier("sms") NotificationService smsService) {
-        this.emailService = emailService;
-        this.smsService = smsService;
-    }
-    
-    public void notifyGameRelease(Game game) {
-        String message = "Nuovo gioco disponibile: " + game.getTitle();
-        emailService.sendNotification(message);
-        smsService.sendNotification(message);
+        // Iniezione specifica per qualificatore
     }
 }
 ```
 
-### 2.2.4 Scopi dei Bean (Bean Scopes)
+## 2.3 Vantaggi Architetturali
 
-#### Singleton (Default)
+### 2.3.1 Testabilità Rivoluzionaria
+
+IoC e DI trasformano il testing permettendo l'isolamento completo delle unità:
+
 ```java
-@Service
-// @Scope("singleton") - default
-public class GameService {
-    // Una sola istanza per l'intero container
-    // Condivisa tra tutte le richieste
-}
-```
-
-#### Prototype
-```java
-@Service
-@Scope("prototype")
-public class GameProcessor {
-    // Nuova istanza ogni volta che viene richiesta
-    // Utile per oggetti stateful
-}
-```
-
-#### Request (Web Applications)
-```java
-@Component
-@Scope("request")
-public class RequestContext {
-    // Una istanza per ogni richiesta HTTP
-    // Automaticamente distrutta alla fine della richiesta
-}
-```
-
-#### Session (Web Applications)
-```java
-@Component
-@Scope("session")
-public class UserSession {
-    // Una istanza per ogni sessione HTTP
-    // Mantiene stato durante la sessione
-}
-```
-
-### 2.2.5 Lifecycle dei Bean
-
-#### Inizializzazione e Distruzione
-```java
-@Service
-public class GameCacheService {
-    private Cache<String, Game> gameCache;
+@ExtendWith(MockitoExtension.class)
+class GameServiceTest {
+    @Mock private GameRepository gameRepository;
+    @Mock private EmailService emailService;
+    @InjectMocks private GameService gameService;
     
-    @PostConstruct
-    public void initialize() {
-        // Inizializzazione dopo l'iniezione delle dipendenze
-        gameCache = CacheBuilder.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(30, TimeUnit.MINUTES)
-            .build();
-        
-        log.info("GameCacheService inizializzato");
-    }
-    
-    @PreDestroy
-    public void cleanup() {
-        // Pulizia prima della distruzione del bean
-        if (gameCache != null) {
-            gameCache.invalidateAll();
-        }
-        log.info("GameCacheService distrutto");
-    }
-    
-    public void cacheGame(String key, Game game) {
-        gameCache.put(key, game);
-    }
-    
-    public Optional<Game> getCachedGame(String key) {
-        return Optional.ofNullable(gameCache.getIfPresent(key));
+    @Test
+    void shouldCreateGameSuccessfully() {
+        // Test con dipendenze controllate
     }
 }
 ```
 
-#### Bean Factory Post Processors
-```java
-@Component
-public class CustomBeanPostProcessor implements BeanPostProcessor {
-    
-    @Override
-    public Object postProcessBeforeInitialization(Object bean, String beanName) 
-            throws BeansException {
-        
-        if (bean instanceof GameService) {
-            log.info("Inizializzazione GameService: {}", beanName);
-        }
-        
-        return bean;
-    }
-    
-    @Override
-    public Object postProcessAfterInitialization(Object bean, String beanName) 
-            throws BeansException {
-        
-        if (bean instanceof GameService) {
-            log.info("GameService inizializzato: {}", beanName);
-        }
-        
-        return bean;
-    }
-}
-```
+### 2.3.2 Flessibilità Configurabile
 
-## 2.3 Configurazione Avanzata
+Cambiare implementazioni senza modificare il codice client:
 
-### 2.3.1 Profili Spring
 ```java
-// Configurazione per ambiente di sviluppo
-@Configuration
 @Profile("dev")
+@Configuration
 public class DevConfig {
-    
-    @Bean
-    public DataSource dataSource() {
-        return new EmbeddedDatabaseBuilder()
-            .setType(EmbeddedDatabaseType.H2)
-            .build();
-    }
-    
     @Bean
     public EmailService emailService() {
         return new MockEmailService(); // Mock per sviluppo
     }
 }
 
-// Configurazione per produzione
-@Configuration
 @Profile("prod")
+@Configuration
 public class ProdConfig {
-    
-    @Bean
-    public DataSource dataSource() {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mysql://prod-db:3306/videogames");
-        config.setUsername("${db.username}");
-        config.setPassword("${db.password}");
-        config.setMaximumPoolSize(20);
-        return new HikariDataSource(config);
-    }
-    
     @Bean
     public EmailService emailService() {
-        return new SmtpEmailService(); // Servizio reale
-    }
-}
-
-// Attivazione profili
-// application.yml
-# spring:
-#   profiles:
-#     active: dev
-
-// Oppure via JVM
-// -Dspring.profiles.active=prod
-```
-
-### 2.3.2 Configurazione Condizionale
-```java
-@Configuration
-public class ConditionalConfig {
-    
-    @Bean
-    @ConditionalOnProperty(
-        name = "cache.enabled", 
-        havingValue = "true", 
-        matchIfMissing = false
-    )
-    public CacheManager cacheManager() {
-        return new CaffeineCacheManager();
-    }
-    
-    @Bean
-    @ConditionalOnMissingBean(CacheManager.class)
-    public CacheManager noCacheManager() {
-        return new NoOpCacheManager();
-    }
-    
-    @Bean
-    @ConditionalOnClass(RedisTemplate.class)
-    public RedisTemplate<String, Object> redisTemplate() {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        // Configurazione Redis
-        return template;
-    }
-    
-    @Bean
-    @ConditionalOnWebApplication
-    public WebMvcConfigurer webConfig() {
-        return new WebMvcConfigurer() {
-            // Configurazione web
-        };
+        return new SmtpEmailService(); // SMTP per produzione
     }
 }
 ```
 
-### 2.3.3 Configurazione Esterna
-```java
-// Proprietà di configurazione
-@ConfigurationProperties(prefix = "app.game")
-@Data
-@Component
-public class GameProperties {
-    private int maxGamesPerUser = 100;
-    private boolean enableRecommendations = true;
-    private Duration cacheExpiration = Duration.ofMinutes(30);
-    private List<String> allowedGenres = new ArrayList<>();
-    private Map<String, String> defaultSettings = new HashMap<>();
-    
-    @NestedConfigurationProperty
-    private EmailSettings email = new EmailSettings();
-    
-    @Data
-    public static class EmailSettings {
-        private boolean enabled = true;
-        private String from = "noreply@videogames.com";
-        private String subject = "Notifica Videogiochi";
-    }
-}
+### 2.3.3 Manutenibilità e Modularità
 
-// Utilizzo delle proprietà
-@Service
+La separazione delle responsabilità porta a codice più pulito e modulare:
+
+**Prima (Accoppiato):**
+```java
 public class GameService {
-    private final GameProperties gameProperties;
-    
-    public GameService(GameProperties gameProperties) {
-        this.gameProperties = gameProperties;
-    }
-    
-    public void validateUserGameLimit(User user) {
-        int userGameCount = getUserGameCount(user);
-        if (userGameCount >= gameProperties.getMaxGamesPerUser()) {
-            throw new BusinessException(
-                "Limite massimo di giochi raggiunto: " + 
-                gameProperties.getMaxGamesPerUser()
-            );
-        }
-    }
-    
-    public List<Game> getRecommendations(User user) {
-        if (!gameProperties.isEnableRecommendations()) {
-            return Collections.emptyList();
-        }
-        
-        // Logica di raccomandazione
-        return findRecommendedGames(user);
-    }
+    private GameRepository repository = new GameRepositoryImpl(); // Rigido
 }
 ```
 
-```yaml
-# application.yml
-app:
-  game:
-    max-games-per-user: 150
-    enable-recommendations: true
-    cache-expiration: PT45M
-    allowed-genres:
-      - ACTION
-      - ADVENTURE
-      - RPG
-      - STRATEGY
-    default-settings:
-      theme: dark
-      language: it
-    email:
-      enabled: true
-      from: "games@mycompany.com"
-      subject: "Aggiornamenti Videogiochi"
-```
-
-## 2.4 Testing con Dependency Injection
-
-### 2.4.1 Unit Testing
-```java
-@ExtendWith(MockitoExtension.class)
-class GameServiceTest {
-    
-    @Mock
-    private GameRepository gameRepository;
-    
-    @Mock
-    private EmailService emailService;
-    
-    @Mock
-    private AuditService auditService;
-    
-    @InjectMocks
-    private GameService gameService;
-    
-    @Test
-    void shouldCreateGameSuccessfully() {
-        // Given
-        Game game = Game.builder()
-            .title("Test Game")
-            .price(BigDecimal.valueOf(59.99))
-            .build();
-        
-        when(gameRepository.save(any(Game.class)))
-            .thenReturn(game);
-        
-        // When
-        gameService.createGame(game);
-        
-        // Then
-        verify(gameRepository).save(game);
-        verify(emailService).sendNotification(contains("Test Game"));
-        verify(auditService).logAction(eq("GAME_CREATED"), any());
-    }
-    
-    @Test
-    void shouldHandleEmailServiceFailure() {
-        // Given
-        Game game = Game.builder().title("Test Game").build();
-        
-        when(gameRepository.save(any(Game.class))).thenReturn(game);
-        doThrow(new RuntimeException("Email service down"))
-            .when(emailService).sendNotification(any());
-        
-        // When & Then
-        assertThatThrownBy(() -> gameService.createGame(game))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("Email service down");
-        
-        verify(gameRepository).save(game);
-        verify(auditService, never()).logAction(any(), any());
-    }
-}
-```
-
-### 2.4.2 Integration Testing
-```java
-@SpringBootTest
-@TestPropertySource(properties = {
-    "spring.datasource.url=jdbc:h2:mem:testdb",
-    "spring.jpa.hibernate.ddl-auto=create-drop"
-})
-class GameServiceIntegrationTest {
-    
-    @Autowired
-    private GameService gameService;
-    
-    @Autowired
-    private GameRepository gameRepository;
-    
-    @MockBean // Mock solo il servizio email
-    private EmailService emailService;
-    
-    @Test
-    @Transactional
-    void shouldCreateAndRetrieveGame() {
-        // Given
-        Game game = Game.builder()
-            .title("Integration Test Game")
-            .price(BigDecimal.valueOf(49.99))
-            .releaseDate(LocalDate.now())
-            .build();
-        
-        // When
-        Game savedGame = gameService.createGame(game);
-        Optional<Game> retrievedGame = gameService.findById(savedGame.getId());
-        
-        // Then
-        assertThat(retrievedGame).isPresent();
-        assertThat(retrievedGame.get().getTitle()).isEqualTo("Integration Test Game");
-        
-        verify(emailService).sendNotification(contains("Integration Test Game"));
-    }
-}
-```
-
-### 2.4.3 Test Configuration
-```java
-@TestConfiguration
-public class TestConfig {
-    
-    @Bean
-    @Primary
-    public EmailService mockEmailService() {
-        return Mockito.mock(EmailService.class);
-    }
-    
-    @Bean
-    @Primary
-    public PasswordEncoder testPasswordEncoder() {
-        // Encoder veloce per i test
-        return new BCryptPasswordEncoder(4);
-    }
-    
-    @Bean
-    public Clock testClock() {
-        // Clock fisso per test deterministici
-        return Clock.fixed(
-            Instant.parse("2024-01-01T00:00:00Z"), 
-            ZoneOffset.UTC
-        );
-    }
-}
-```
-
-## 2.5 Best Practices
-
-### 2.5.1 Principi Generali
-
-1. **Preferire Constructor Injection**
-   - Garantisce immutabilità
-   - Fail-fast behavior
-   - Migliore testabilità
-
-2. **Evitare Dipendenze Circolari**
-```java
-// PROBLEMATICO - Dipendenza circolare
-@Service
-public class GameService {
-    private final UserService userService;
-    
-    public GameService(UserService userService) {
-        this.userService = userService;
-    }
-}
-
-@Service
-public class UserService {
-    private final GameService gameService; // CIRCOLARE!
-    
-    public UserService(GameService gameService) {
-        this.gameService = gameService;
-    }
-}
-
-// SOLUZIONE - Introdurre un servizio intermedio
-@Service
-public class UserGameService {
-    private final GameRepository gameRepository;
-    private final UserRepository userRepository;
-    
-    // Logica che coinvolge entrambi
-}
-```
-
-3. **Utilizzare Interfacce per le Dipendenze**
-```java
-// BUONA PRATICA
-@Service
-public class GameService {
-    private final GameRepository gameRepository; // Interfaccia
-    private final NotificationService notificationService; // Interfaccia
-    
-    public GameService(GameRepository gameRepository,
-                      NotificationService notificationService) {
-        this.gameRepository = gameRepository;
-        this.notificationService = notificationService;
-    }
-}
-```
-
-4. **Gestire le Dipendenze Opzionali**
+**Dopo (Disaccoppiato):**
 ```java
 @Service
 public class GameService {
-    private final GameRepository gameRepository;
-    private final Optional<EmailService> emailService;
+    private final GameRepository repository;
     
-    public GameService(GameRepository gameRepository,
-                      @Autowired(required = false) EmailService emailService) {
-        this.gameRepository = gameRepository;
-        this.emailService = Optional.ofNullable(emailService);
-    }
-    
-    public void createGame(Game game) {
-        gameRepository.save(game);
-        
-        emailService.ifPresent(service -> 
-            service.sendNotification("Nuovo gioco: " + game.getTitle())
-        );
+    public GameService(GameRepository repository) {
+        this.repository = repository; // Flessibile
     }
 }
 ```
 
-5. **Configurazione Esplicita per Logica Complessa**
-```java
-@Configuration
-public class GameConfig {
-    
-    @Bean
-    public GameService gameService(
-            GameRepository gameRepository,
-            @Qualifier("async") NotificationService notificationService,
-            GameProperties properties) {
-        
-        GameService service = new GameService(
-            gameRepository, 
-            notificationService
-        );
-        
-        // Configurazione complessa
-        service.setMaxGamesPerUser(properties.getMaxGamesPerUser());
-        service.setValidationRules(createValidationRules(properties));
-        
-        return service;
-    }
-    
-    private List<ValidationRule> createValidationRules(GameProperties properties) {
-        // Logica di creazione delle regole
-        return Arrays.asList(
-            new PriceValidationRule(properties.getMinPrice(), properties.getMaxPrice()),
-            new TitleValidationRule(properties.getMinTitleLength()),
-            new ReleaseDateValidationRule()
-        );
-    }
-}
-```
+## 2.4 Conclusioni
 
-L'Inversion of Control e la Dependency Injection sono principi fondamentali per creare applicazioni modulari, testabili e manutenibili. Spring Framework fornisce un potente container IoC che semplifica notevolmente l'implementazione di questi pattern, permettendo agli sviluppatori di concentrarsi sulla logica di business piuttosto che sulla gestione delle dipendenze.
+IoC e DI rappresentano una **trasformazione paradigmatica** da un modello "costruttivo" a uno "compositivo":
+
+**Trasformazioni Chiave:**
+- **Controllo**: Da imperativo a dichiarativo
+- **Struttura**: Da accoppiamento a composizione
+- **Adattabilità**: Da rigidità a flessibilità
+
+**Benefici Sistemici:**
+- **Testabilità**: Testing isolato e controllato
+- **Manutenibilità**: Codice modulare e pulito
+- **Flessibilità**: Adattamento rapido ai requisiti
+- **Riusabilità**: Componenti indipendenti
+
+Questi principi costituiscono la base per architetture moderne, scalabili e mantenibili, e sono fondamentali per pattern avanzati come microservizi e domain-driven design.
